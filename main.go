@@ -135,8 +135,7 @@ func logHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
 
 func spawnSubscriber(endpoint string) <-chan []byte {
 	header := http.Header{}
-	finish := make(chan struct{})
-	msgs, errs := listen.RetryingWatch(endpoint, header, finish)
+	msgs, errs := listen.RetryingWatch(endpoint, header, nil)
 	go errorHandler(errs)
 
 	return msgs
