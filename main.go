@@ -21,8 +21,6 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-// TODO: How to assert this path is correct? Env?
-const CI_LINK = "https://services.scraperwiki.com/ci/%s"
 const LOG_FILE = "output.txt"
 
 type SubEvent struct {
@@ -63,10 +61,12 @@ func main() {
 
 func ActionMain(c *cli.Context) {
 	// TODO: How do these environment variables get set?
-	port := assertEnv("PORT")
-	endpoint := assertEnv("HOOKBOT_SUB_ENDPOINT")
-	user := assertEnv("GITHUB_USER")
-	token := assertEnv("GITHUB_TOKEN")
+	port := assertEnv("PORT", "")
+	endpoint := assertEnv("HOOKBOT_SUB_ENDPOINT", "")
+	user := assertEnv("GITHUB_USER", "")
+	token := assertEnv("GITHUB_TOKEN", "")
+	authority := assertEnv("CI_URL_AUTHORITY", "localhost")
+	urlPrefix := fmt.Sprintf("https://%s:%s/status", authority, port)
 
 	baseDir, err := os.Getwd()
 	if err != nil {
@@ -81,14 +81,17 @@ func ActionMain(c *cli.Context) {
 	events := spawnEventHandler(msgs)
 	statuses := spawnIntegrator(events, baseDir)
 	ghREST := githubRestPOST(user, token)
-	spawnGithubNotifier(statuses, ghREST)
+	spawnGithubNotifier(statuses, ghREST, urlPrefix)
 
 	keepAlive()
 }
 
-func assertEnv(key string) string {
+func assertEnv(key string, fallback string) string {
 	val := os.Getenv(key)
 	if val == "" {
+		if fallback != "" {
+			return fallback
+		}
 		log.Fatalln("Error:", key, "not set")
 	}
 	return val
@@ -247,13 +250,13 @@ func stageBuildAndTest(workspaceDir string) error {
 	return cmd.Run()
 }
 
-func spawnGithubNotifier(statuses <-chan CommitStatus, notify Notifier) {
+func spawnGithubNotifier(statuses <-chan CommitStatus, notify Notifier, urlPrefix string) {
 	go func() {
 		const GH_LINK string = "https://api.github.com/repos/%s/statuses/%s"
 
 		for status := range statuses {
 			status.Context = "ci"
-			status.TargetUrl = fmt.Sprintf(CI_LINK, status.Ref)
+			status.TargetUrl = fmt.Sprintf("%s/%s", urlPrefix, status.Ref)
 			url := fmt.Sprintf(GH_LINK, status.Repo, status.Ref)
 			log.Println("Info: Notify Github:", url, status)
 			if err := notify(url, status); err != nil {
