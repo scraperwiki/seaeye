@@ -114,9 +114,7 @@ func spawnServer(port string, baseDir string) {
 
 	go func() {
 		log.Printf("Info: Listening on :%s", port)
-		if err := http.ListenAndServe(":"+port, nil); err != nil {
-			log.Fatalln("Error:", err)
-		}
+		log.Fatalln(http.ListenAndServe(":"+port, nil))
 	}()
 }
 
