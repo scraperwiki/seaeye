@@ -245,11 +245,7 @@ func stageBuildAndTest(workspaceDir string) error {
 	cmd.Stderr = outfile
 
 	log.Println("Info: Running command:", cmd.Dir, cmd.Path, cmd.Args)
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	return cmd.Wait()
+	return cmd.Run()
 }
 
 func spawnGithubNotifier(statuses <-chan CommitStatus, notify Notifier) {
