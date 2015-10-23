@@ -22,8 +22,8 @@ import (
 )
 
 // TODO: How to assert this path is correct? Env?
-const ci_link = "https://services.scraperwiki.com/ci/%s"
-const logFile = "output.txt"
+const CI_LINK = "https://services.scraperwiki.com/ci/%s"
+const LOG_FILE = "output.txt"
 
 type SubEvent struct {
 	Branch string
@@ -129,7 +129,7 @@ func logHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
 	}
 
 	// TODO: This is git-prep-directory logic
-	outPath := path.Join(baseDir, "src", "c", commit[:10], logFile)
+	outPath := path.Join(baseDir, "src", "c", commit[:10], LOG_FILE)
 	http.ServeFile(w, r, outPath)
 }
 
@@ -169,12 +169,12 @@ func spawnIntegrator(events <-chan SubEvent, baseDir string) <-chan CommitStatus
 	statuses := make(chan CommitStatus)
 
 	go func() {
-		const deletedBranchHash = "0000000000000000000000000000000000000000"
+		const DELETED_BRANCH_HASH = "0000000000000000000000000000000000000000"
 
 		for event := range events {
 			log.Println("Debug: Event:", event.Repo, event.SHA)
 
-			if event.Type != "push" || event.SHA == deletedBranchHash {
+			if event.Type != "push" || event.SHA == DELETED_BRANCH_HASH {
 				continue
 			}
 
@@ -232,7 +232,7 @@ func stageCheckout(baseDir string, repo string, ref string) (string, error) {
 }
 
 func stageBuildAndTest(workspaceDir string) error {
-	outfile, err := os.Create(path.Join(workspaceDir, logFile))
+	outfile, err := os.Create(path.Join(workspaceDir, LOG_FILE))
 	if err != nil {
 		return err
 	}
@@ -250,12 +250,12 @@ func stageBuildAndTest(workspaceDir string) error {
 
 func spawnGithubNotifier(statuses <-chan CommitStatus, notify Notifier) {
 	go func() {
-		const gh_link string = "https://api.github.com/repos/%s/statuses/%s"
+		const GH_LINK string = "https://api.github.com/repos/%s/statuses/%s"
 
 		for status := range statuses {
 			status.Context = "ci"
-			status.TargetUrl = fmt.Sprintf(ci_link, status.Ref)
-			url := fmt.Sprintf(gh_link, status.Repo, status.Ref)
+			status.TargetUrl = fmt.Sprintf(CI_LINK, status.Ref)
+			url := fmt.Sprintf(GH_LINK, status.Repo, status.Ref)
 			log.Println("Info: Notify Github:", url, status)
 			if err := notify(url, status); err != nil {
 				log.Println("Error:", err)
