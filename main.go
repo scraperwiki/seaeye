@@ -134,8 +134,7 @@ func logHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
 }
 
 func spawnSubscriber(endpoint string) <-chan []byte {
-	header := http.Header{}
-	msgs, errs := listen.RetryingWatch(endpoint, header, nil)
+	msgs, errs := listen.RetryingWatch(endpoint, http.Header{}, nil)
 	go errorHandler(errs)
 
 	return msgs
@@ -265,8 +264,6 @@ func spawnGithubNotifier(statuses <-chan CommitStatus, notify Notifier) {
 }
 
 func githubRestPOST(user string, token string) Notifier {
-	client := &http.Client{}
-
 	return func(url string, payload interface{}) error {
 		data, err := json.Marshal(payload)
 		if err != nil {
@@ -283,7 +280,7 @@ func githubRestPOST(user string, token string) Notifier {
 		//req.Header.Set("Authorization", fmt.Sprintf("token %s", token))
 		req.SetBasicAuth(user, token)
 
-		resp, err := client.Do(req)
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			return err
 		}
