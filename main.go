@@ -127,6 +127,7 @@ func logHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
 	// TODO: This is git-prep-directory logic
 	if len(commit) < 10 {
 		http.NotFound(w, r)
+		return
 	}
 
 	// TODO: This is git-prep-directory logic
