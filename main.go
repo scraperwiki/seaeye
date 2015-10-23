@@ -68,7 +68,7 @@ func ActionMain(c *cli.Context) {
 	user := assertEnv("GITHUB_USER")
 	token := assertEnv("GITHUB_TOKEN")
 
-	baseDir, err := prepareEnvironment()
+	baseDir, err := os.Getwd()
 	if err != nil {
 		log.Fatalln("Error:", err)
 	}
@@ -92,16 +92,6 @@ func assertEnv(key string) string {
 		log.Fatalln("Error:", key, "not set")
 	}
 	return val
-}
-
-func prepareEnvironment() (string, error) {
-	// TODO: Make path configurable?
-	baseDir := path.Join(os.TempDir(), "pdftables.com", "ci")
-	log.Println("Info: Setup base directory:", baseDir)
-	if err := os.MkdirAll(baseDir, 0755); err != nil {
-		return "", err
-	}
-	return baseDir, nil
 }
 
 func keepAlive() {
