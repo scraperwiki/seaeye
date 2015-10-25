@@ -66,7 +66,7 @@ func ActionMain(c *cli.Context) {
 	user := assertEnv("GITHUB_USER", "")
 	token := assertEnv("GITHUB_TOKEN", "")
 	authority := assertEnv("CI_URL_AUTHORITY", "localhost")
-	urlPrefix := fmt.Sprintf("https://%s:%s/status", authority, port)
+	urlPrefix := fmt.Sprintf("https://%s:%s", authority, port)
 
 	baseDir, err := os.Getwd()
 	if err != nil {
@@ -125,14 +125,8 @@ func logHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
 	vars := mux.Vars(r)
 	commit := vars["commit"]
 
-	// TODO: Remove git-prep-directory logic
-	if len(commit) < 10 {
-		http.NotFound(w, r)
-		return
-	}
-
-	// TODO: Remove git-prep-directory logic
-	outPath := path.Join(baseDir, "src", "c", commit[:10], LOG_FILE)
+	// Note: Tighly coupled with the logPath in runPipeline.
+	outPath := path.Join(baseDir, "log", commit, LOG_FILE)
 	http.ServeFile(w, r, outPath)
 }
 
@@ -188,16 +182,31 @@ func spawnIntegrator(events <-chan SubEvent, baseDir string) <-chan CommitStatus
 }
 
 func runPipeline(baseDir string, repo string, ref string, statuses chan<- CommitStatus) {
+	logPath := path.Join(baseDir, "log", ref, LOG_FILE)
 	status := func(state string, description string) CommitStatus {
 		return CommitStatus{
 			Repo:        repo,
 			Ref:         ref,
 			State:       state,
 			Description: description,
+			TargetUrl:   fmt.Sprintf("/status/%s", ref),
 		}
 	}
 
 	statuses <- status("pending", "Starting...")
+
+	if err := os.MkdirAll(path.Dir(logPath), 0755); err != nil {
+		log.Println("Error: Stage Prepare failed:", ref, err)
+		statuses <- status("failure", "Stage Prepare failed")
+		return
+	}
+	logFile, err := os.Create(logPath)
+	if err != nil {
+		log.Println("Error: Stage Prepare failed:", ref, err)
+		statuses <- status("failure", "Stage Prepare failed")
+		return
+	}
+	defer logFile.Close()
 
 	checkoutDir := path.Join(baseDir, "src", repo)
 	repoUrl := fmt.Sprintf("git@github.com:%s", repo)
@@ -216,8 +225,8 @@ func runPipeline(baseDir string, repo string, ref string, statuses chan<- Commit
 		log.Println("Info: Stage Cleanup finish:", ref)
 	}()
 
-	log.Println("Info: Stage BuildAndTest start:", ref)
-	err = stageBuildAndTest(buildDirectory.Dir)
+	log.Println("Info: Stage BuildAndTest start:", ref, logFile.Name)
+	err = stageBuildAndTest(buildDir.Dir, logFile)
 	if err != nil {
 		log.Println("Error: Stage BuildAndTest failed:", ref, err)
 		if _, ok := err.(*exec.ExitError); ok {
@@ -236,17 +245,11 @@ func stageCheckout(checkoutDir string, url string, ref string) (*git.BuildDirect
 	return git.PrepBuildDirectory(checkoutDir, url, ref)
 }
 
-func stageBuildAndTest(workspaceDir string) error {
-	outfile, err := os.Create(path.Join(workspaceDir, LOG_FILE))
-	if err != nil {
-		return err
-	}
-	defer outfile.Close()
-
+func stageBuildAndTest(buildDir string, logFile *os.File) error {
 	cmd := exec.Command("make", "ci")
-	cmd.Dir = workspaceDir
-	cmd.Stdout = outfile
-	cmd.Stderr = outfile
+	cmd.Dir = buildDir
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
 
 	log.Println("Info: Running command:", cmd.Dir, cmd.Path, cmd.Args)
 	return cmd.Run()
@@ -258,7 +261,7 @@ func spawnGithubNotifier(statuses <-chan CommitStatus, notify Notifier, urlPrefi
 
 		for status := range statuses {
 			status.Context = "ci"
-			status.TargetUrl = fmt.Sprintf("%s/%s", urlPrefix, status.Ref)
+			status.TargetUrl = fmt.Sprint(urlPrefix, status.TargetUrl)
 			url := fmt.Sprintf(GH_LINK, status.Repo, status.Ref)
 			log.Println("Info: Notify Github:", url, status)
 			if err := notify(url, status); err != nil {
