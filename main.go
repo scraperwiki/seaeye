@@ -16,6 +16,7 @@ import (
 
 	"github.com/codegangsta/cli"
 	"github.com/gorilla/mux"
+	"github.com/scraperwiki/git-prep-directory"
 	"github.com/scraperwiki/hookbot/pkg/listen"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -60,7 +61,6 @@ func main() {
 }
 
 func ActionMain(c *cli.Context) {
-	// TODO: How do these environment variables get set?
 	port := assertEnv("PORT", "")
 	endpoint := assertEnv("HOOKBOT_SUB_ENDPOINT", "")
 	user := assertEnv("GITHUB_USER", "")
@@ -125,13 +125,13 @@ func logHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
 	vars := mux.Vars(r)
 	commit := vars["commit"]
 
-	// TODO: This is git-prep-directory logic
+	// TODO: Remove git-prep-directory logic
 	if len(commit) < 10 {
 		http.NotFound(w, r)
 		return
 	}
 
-	// TODO: This is git-prep-directory logic
+	// TODO: Remove git-prep-directory logic
 	outPath := path.Join(baseDir, "src", "c", commit[:10], LOG_FILE)
 	http.ServeFile(w, r, outPath)
 }
@@ -199,17 +199,25 @@ func runPipeline(baseDir string, repo string, ref string, statuses chan<- Commit
 
 	statuses <- status("pending", "Starting...")
 
-	log.Println("Info: Stage Checkout start:", baseDir, repo, ref)
-	workspaceDir, err := stageCheckout(baseDir, repo, ref)
+	checkoutDir := path.Join(baseDir, "src", repo)
+	repoUrl := fmt.Sprintf("git@github.com:%s", repo)
+	log.Println("Info: Stage Checkout start:", checkoutDir, repoUrl, ref)
+	buildDir, err := stageCheckout(checkoutDir, repoUrl, ref)
 	if err != nil {
-		log.Println("Error: Stage Checkout failed:", ref, err, workspaceDir)
+		log.Println("Error: Stage Checkout failed:", ref, err)
 		statuses <- status("error", "Stage Checkout failed")
 		return
 	}
-	log.Println("Info: Stage Checkout succeeded:", ref)
+	log.Println("Info: Stage Checkout succeeded:", ref, buildDir.Dir)
 
-	log.Println("Info: Stage BuildAndTest start:", workspaceDir)
-	err = stageBuildAndTest(workspaceDir)
+	defer func() {
+		log.Println("Info: Stage Cleanup start:", ref)
+		buildDir.Cleanup()
+		log.Println("Info: Stage Cleanup finish:", ref)
+	}()
+
+	log.Println("Info: Stage BuildAndTest start:", ref)
+	err = stageBuildAndTest(buildDirectory.Dir)
 	if err != nil {
 		log.Println("Error: Stage BuildAndTest failed:", ref, err)
 		if _, ok := err.(*exec.ExitError); ok {
@@ -223,14 +231,9 @@ func runPipeline(baseDir string, repo string, ref string, statuses chan<- Commit
 	statuses <- status("success", "Stage BuildAndTest succeeded")
 }
 
-func stageCheckout(baseDir string, repo string, ref string) (string, error) {
-	url := fmt.Sprintf("git@github.com:%s", repo)
-	// TODO: How assert this command exist? Should it call the Go code instead?
-	cmd := exec.Command("git-prep-directory", "--url", url, "--ref", ref)
-	cmd.Dir = baseDir
-	log.Println("Info: Running command:", cmd.Dir, cmd.Path, cmd.Args)
-	workspaceDir, err := cmd.Output()
-	return string(workspaceDir[:]), err
+func stageCheckout(checkoutDir string, url string, ref string) (*git.BuildDirectory, error) {
+	log.Println("Info: Running git-prep-directory:", checkoutDir, url, ref)
+	return git.PrepBuildDirectory(checkoutDir, url, ref)
 }
 
 func stageBuildAndTest(workspaceDir string) error {
@@ -240,7 +243,6 @@ func stageBuildAndTest(workspaceDir string) error {
 	}
 	defer outfile.Close()
 
-	// TODO: Make configurable what this step does? Allow multi steps?
 	cmd := exec.Command("make", "ci")
 	cmd.Dir = workspaceDir
 	cmd.Stdout = outfile
