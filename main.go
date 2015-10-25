@@ -34,7 +34,7 @@ type SubEvent struct {
 
 type CommitStatus struct {
 	Repo        string `json:"-"`
-	Ref         string `json:"-"`
+	Rev         string `json:"-"`
 	State       string `json:"state"`
 	Description string `json:"description,omitempty"`
 	TargetUrl   string `json:"target_url,omitempty"`
@@ -181,28 +181,29 @@ func spawnIntegrator(events <-chan SubEvent, baseDir string) <-chan CommitStatus
 	return statuses
 }
 
-func runPipeline(baseDir string, repo string, ref string, statuses chan<- CommitStatus) {
-	logPath := path.Join(baseDir, "log", ref, LOG_FILE)
+func runPipeline(baseDir string, repo string, rev string, statuses chan<- CommitStatus) {
+	logPath := path.Join(baseDir, "log", rev, LOG_FILE)
+
 	status := func(state string, description string) CommitStatus {
 		return CommitStatus{
 			Repo:        repo,
-			Ref:         ref,
+			Rev:         rev,
 			State:       state,
 			Description: description,
-			TargetUrl:   fmt.Sprintf("/status/%s", ref),
+			TargetUrl:   fmt.Sprintf("/status/%s", rev),
 		}
 	}
 
 	statuses <- status("pending", "Starting...")
 
 	if err := os.MkdirAll(path.Dir(logPath), 0755); err != nil {
-		log.Println("Error: Stage Prepare failed:", ref, err)
+		log.Println("Error: Stage Prepare failed:", rev, err)
 		statuses <- status("failure", "Stage Prepare failed")
 		return
 	}
 	logFile, err := os.Create(logPath)
 	if err != nil {
-		log.Println("Error: Stage Prepare failed:", ref, err)
+		log.Println("Error: Stage Prepare failed:", rev, err)
 		statuses <- status("failure", "Stage Prepare failed")
 		return
 	}
@@ -210,25 +211,25 @@ func runPipeline(baseDir string, repo string, ref string, statuses chan<- Commit
 
 	checkoutDir := path.Join(baseDir, "src", repo)
 	repoUrl := fmt.Sprintf("git@github.com:%s", repo)
-	log.Println("Info: Stage Checkout start:", checkoutDir, repoUrl, ref)
-	buildDir, err := stageCheckout(checkoutDir, repoUrl, ref)
+	log.Println("Info: Stage Checkout start:", checkoutDir, repoUrl, rev)
+	buildDir, err := stageCheckout(checkoutDir, repoUrl, rev)
 	if err != nil {
-		log.Println("Error: Stage Checkout failed:", ref, err)
+		log.Println("Error: Stage Checkout failed:", rev, err)
 		statuses <- status("error", "Stage Checkout failed")
 		return
 	}
-	log.Println("Info: Stage Checkout succeeded:", ref, buildDir.Dir)
+	log.Println("Info: Stage Checkout succeeded:", rev, buildDir.Dir)
 
 	defer func() {
-		log.Println("Info: Stage Cleanup start:", ref)
+		log.Println("Info: Stage Cleanup start:", rev)
 		buildDir.Cleanup()
-		log.Println("Info: Stage Cleanup finish:", ref)
+		log.Println("Info: Stage Cleanup finish:", rev)
 	}()
 
-	log.Println("Info: Stage BuildAndTest start:", ref, logFile.Name)
+	log.Println("Info: Stage BuildAndTest start:", rev, logFile.Name)
 	err = stageBuildAndTest(buildDir.Dir, logFile)
 	if err != nil {
-		log.Println("Error: Stage BuildAndTest failed:", ref, err)
+		log.Println("Error: Stage BuildAndTest failed:", rev, err)
 		if _, ok := err.(*exec.ExitError); ok {
 			statuses <- status("failure", "Stage BuildAndTest failed")
 		} else {
@@ -236,13 +237,13 @@ func runPipeline(baseDir string, repo string, ref string, statuses chan<- Commit
 		}
 		return
 	}
-	log.Println("Info: Stage BuildAndTest succeeded:", ref)
+	log.Println("Info: Stage BuildAndTest succeeded:", rev)
 	statuses <- status("success", "Stage BuildAndTest succeeded")
 }
 
-func stageCheckout(checkoutDir string, url string, ref string) (*git.BuildDirectory, error) {
-	log.Println("Info: Running git-prep-directory:", checkoutDir, url, ref)
-	return git.PrepBuildDirectory(checkoutDir, url, ref)
+func stageCheckout(checkoutDir string, url string, rev string) (*git.BuildDirectory, error) {
+	log.Println("Info: Running git-prep-directory:", checkoutDir, url, rev)
+	return git.PrepBuildDirectory(checkoutDir, url, rev)
 }
 
 func stageBuildAndTest(buildDir string, logFile *os.File) error {
@@ -262,7 +263,7 @@ func spawnGithubNotifier(statuses <-chan CommitStatus, notify Notifier, urlPrefi
 		for status := range statuses {
 			status.Context = "ci"
 			status.TargetUrl = fmt.Sprint(urlPrefix, status.TargetUrl)
-			url := fmt.Sprintf(GH_LINK, status.Repo, status.Ref)
+			url := fmt.Sprintf(GH_LINK, status.Repo, status.Rev)
 			log.Println("Info: Notify Github:", url, status)
 			if err := notify(url, status); err != nil {
 				log.Println("Error:", err)
