@@ -148,6 +148,12 @@ func spawnEventHandler(msgs <-chan []byte) <-chan SubEvent {
 
 	go func() {
 		for msg := range msgs {
+			// HACK: Recursive topic messages are of format '{path}\x00{data}'.
+			parts := bytes.Split(msg, []byte{'\x00'})
+			if len(parts) == 2 {
+				msg = parts[1]
+			}
+
 			var event SubEvent
 			if err := json.Unmarshal(msg, &event); err != nil {
 				log.Printf("Warn: Event error: %v: %v", err, string(msg[:]))
