@@ -139,7 +139,7 @@ func spawnSubscriber(endpoint string) <-chan []byte {
 
 func errorHandler(errs <-chan error) {
 	for err := range errs {
-		log.Println("Warn:", err)
+		log.Println("Warn: Subscription error:", err)
 	}
 }
 
@@ -150,7 +150,7 @@ func spawnEventHandler(msgs <-chan []byte) <-chan SubEvent {
 		for msg := range msgs {
 			var event SubEvent
 			if err := json.Unmarshal(msg, &event); err != nil {
-				log.Println("Warn:", err)
+				log.Printf("Warn: Event error: %v: %v", err, string(msg[:]))
 				continue
 			}
 
