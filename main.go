@@ -1,5 +1,3 @@
-// seaeye subscribes to branch pushes from Github on Hookbot and runs continuous
-// integrations reporting result back to the commit status on Github.
 package main
 
 import (
@@ -16,7 +14,6 @@ import (
 	"os/signal"
 	"path"
 
-	"github.com/codegangsta/cli"
 	"github.com/gorilla/mux"
 	"github.com/scraperwiki/git-prep-directory"
 	"github.com/scraperwiki/hookbot/pkg/listen"
@@ -65,28 +62,7 @@ func init() {
 	}
 }
 
-func main() {
-	app := cli.NewApp()
-	app.Name = "seaeye"
-	app.Usage = "CI server integrating Github and Hookbot."
-	app.Version = "1.0"
-	app.Action = ActionMain
-	app.RunAndExitOnError()
-}
-
-func ActionMain(c *cli.Context) {
-	port := assertEnv("PORT", "")
-	endpoint := assertEnv("HOOKBOT_SUB_ENDPOINT", "")
-	user := assertEnv("GITHUB_USER", "")
-	token := assertEnv("GITHUB_TOKEN", "")
-	authority := assertEnv("CI_URL_AUTHORITY", "localhost")
-	urlPrefix := fmt.Sprintf("http://%s:%s", authority, port)
-
-	baseDir, err := os.Getwd()
-	if err != nil {
-		log.Fatalln("Error:", err)
-	}
-
+func Run(port string, baseDir string, user string, token string, urlPrefix string, endpoint string) {
 	// TODO: Put integrator in own file?
 	msgs := spawnSubscriber(endpoint)
 	events := spawnEventHandler(msgs)
@@ -98,17 +74,6 @@ func ActionMain(c *cli.Context) {
 	spawnServer(port, baseDir, events)
 
 	keepAlive()
-}
-
-func assertEnv(key string, fallback string) string {
-	val := os.Getenv(key)
-	if val == "" {
-		if fallback != "" {
-			return fallback
-		}
-		log.Fatalln("Error:", key, "not set")
-	}
-	return val
 }
 
 func keepAlive() {
