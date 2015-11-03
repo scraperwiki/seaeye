@@ -66,7 +66,7 @@ func ActionMain(c *cli.Context) {
 	user := assertEnv("GITHUB_USER", "")
 	token := assertEnv("GITHUB_TOKEN", "")
 	authority := assertEnv("CI_URL_AUTHORITY", "localhost")
-	urlPrefix := fmt.Sprintf("https://%s:%s", authority, port)
+	urlPrefix := fmt.Sprintf("http://%s:%s", authority, port)
 
 	baseDir, err := os.Getwd()
 	if err != nil {
