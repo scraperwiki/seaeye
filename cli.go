@@ -8,11 +8,13 @@ import (
 	"github.com/codegangsta/cli"
 )
 
+var version string
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "seaeye"
 	app.Usage = "CI server integrating Github and Hookbot."
-	app.Version = "1.0"
+	app.Version = version
 	app.Action = ActionMain
 	app.RunAndExitOnError()
 }
