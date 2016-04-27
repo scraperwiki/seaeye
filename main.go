@@ -28,11 +28,15 @@ type SubEvent struct {
 	Who    string
 }
 
-// Run is the main entrypoint for a server.
-func Run(port string, baseDir string, user string, token string, urlPrefix string, endpoint string) {
-	msgs := spawnSubscriber(endpoint)
+// Start is the main entrypoint for the server.
+func Start(conf *Config) {
+	// Start hookbot subscriber
+	msgs := spawnSubscriber(conf.HookbotEndpoint)
 	events := spawnEventHandler(msgs)
+
+	// Start integrator (checkout, build, test)
 	statuses := spawnIntegrator(events, baseDir)
+
 	ghREST := githubRestPOST(user, token)
 	spawnGithubNotifier(statuses, ghREST, urlPrefix)
 
