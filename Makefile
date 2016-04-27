@@ -2,8 +2,11 @@ VERSION?=$(shell git describe --tags --always --dirty)
 
 all: build
 
-build:
-	go build -o dist/seaeye_darwin_amd64 -ldflags "-X main.version=$(VERSION)"
+sm:
+	git submodule update --init --recursive
+
+build: sm
+	go build -ldflags "-X main.version=$(VERSION)"
 
 dist: dist/seaeye_darwin_amd64 dist/seaeye_linux_amd64
 

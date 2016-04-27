@@ -1,0 +1,16 @@
+FROM golang:1.6.2
+
+EXPOSE 19515
+
+ENTRYPOINT ["seaeye"]
+
+WORKDIR /tmp
+
+# The mandatory environment variables
+#   - HOOKBOT_SUB_ENDPOINT
+#   - GITHUB_USER
+#   - GITHUB_TOKEN
+# are provided by systemd/hanoverd.
+
+COPY ./ /go/src/github.com/scraperwiki/seaeye
+RUN go install github.com/scraperwiki/seaeye
