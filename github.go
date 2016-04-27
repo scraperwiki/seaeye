@@ -9,16 +9,18 @@ import (
 	"net/http"
 )
 
-const GH_LINK string = "https://api.github.com/repos/%s/statuses/%s"
+// GithubAPILink is the Github API link that allows adding status updated.
+const GithubAPILink string = "https://api.github.com/repos/%s/statuses/%s"
 
+// Notifier specifies a function to update the build status.
 type Notifier func(string, interface{}) error
 
 func spawnGithubNotifier(statuses <-chan CommitStatus, notify Notifier, urlPrefix string) {
 	go func() {
 		for status := range statuses {
 			status.Context = "ci"
-			status.TargetUrl = fmt.Sprint(urlPrefix, status.TargetUrl)
-			url := fmt.Sprintf(GH_LINK, status.Repo, status.Rev)
+			status.TargetURL = fmt.Sprint(urlPrefix, status.TargetURL)
+			url := fmt.Sprintf(GithubAPILink, status.Repo, status.Rev)
 			log.Println("Info: Notify Github:", url, status)
 			if err := notify(url, status); err != nil {
 				log.Println("Error:", err)

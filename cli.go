@@ -19,6 +19,7 @@ func main() {
 	app.RunAndExitOnError()
 }
 
+// ActionMain is the main commandline command.
 func ActionMain(c *cli.Context) {
 	port := assertEnv("SEAEYE_PORT", "19515") // "SEAE"(YE)
 	endpoint := assertEnv("HOOKBOT_SUB_ENDPOINT", "")

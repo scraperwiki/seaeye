@@ -10,7 +10,8 @@ import (
 	"github.com/scraperwiki/git-prep-directory"
 )
 
-const DELETED_BRANCH_HASH = "0000000000000000000000000000000000000000"
+// DeletedBranchHash defines the magic git commit hash for a deleted branch.
+const DeletedBranchHash = "0000000000000000000000000000000000000000"
 
 func spawnIntegrator(events <-chan SubEvent, baseDir string) <-chan CommitStatus {
 	statuses := make(chan CommitStatus)
@@ -19,7 +20,7 @@ func spawnIntegrator(events <-chan SubEvent, baseDir string) <-chan CommitStatus
 		for event := range events {
 			log.Println("Debug: Event:", event.Repo, event.SHA)
 
-			if event.Type != "push" || event.SHA == DELETED_BRANCH_HASH {
+			if event.Type != "push" || event.SHA == DeletedBranchHash {
 				continue
 			}
 
@@ -31,7 +32,7 @@ func spawnIntegrator(events <-chan SubEvent, baseDir string) <-chan CommitStatus
 }
 
 func runPipeline(baseDir string, repo string, rev string, statuses chan<- CommitStatus) {
-	logPath := path.Join(baseDir, "log", rev, LOG_FILE)
+	logPath := path.Join(baseDir, "log", rev, LogFilePath)
 
 	status := func(state string, description string) CommitStatus {
 		return CommitStatus{
@@ -39,7 +40,7 @@ func runPipeline(baseDir string, repo string, rev string, statuses chan<- Commit
 			Rev:         rev,
 			State:       state,
 			Description: description,
-			TargetUrl:   fmt.Sprintf("/status/%s", rev),
+			TargetURL:   fmt.Sprintf("/status/%s", rev),
 		}
 	}
 
@@ -59,9 +60,9 @@ func runPipeline(baseDir string, repo string, rev string, statuses chan<- Commit
 	defer logFile.Close()
 
 	checkoutDir := path.Join(baseDir, "src", repo)
-	repoUrl := fmt.Sprintf("git@github.com:%s", repo)
-	log.Println("Info: Stage Checkout start:", checkoutDir, repoUrl, rev)
-	buildDir, err := stageCheckout(checkoutDir, repoUrl, rev)
+	repoURL := fmt.Sprintf("git@github.com:%s", repo)
+	log.Println("Info: Stage Checkout start:", checkoutDir, repoURL, rev)
+	buildDir, err := stageCheckout(checkoutDir, repoURL, rev)
 	if err != nil {
 		log.Println("Error: Stage Checkout failed:", rev, err)
 		statuses <- status("error", "Stage Checkout failed")

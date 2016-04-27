@@ -8,17 +8,20 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
-const LOG_FILE = "output.txt"
+// LogFilePath defines the path to the build log stdout and stderr.
+const LogFilePath = "output.txt"
 
+// CommitStatus specifies the Github API reponse for commit statuses.
 type CommitStatus struct {
 	Repo        string `json:"-"`
 	Rev         string `json:"-"`
 	State       string `json:"state"`
 	Description string `json:"description,omitempty"`
-	TargetUrl   string `json:"target_url,omitempty"`
+	TargetURL   string `json:"target_url,omitempty"`
 	Context     string `json:"context,omitempty"`
 }
 
+// SubEvent specifies a Hookbot event.
 type SubEvent struct {
 	Branch string
 	Repo   string
@@ -35,6 +38,7 @@ func init() {
 	}
 }
 
+// Run is the main entrypoint for a server.
 func Run(port string, baseDir string, user string, token string, urlPrefix string, endpoint string) {
 	msgs := spawnSubscriber(endpoint)
 	events := spawnEventHandler(msgs)

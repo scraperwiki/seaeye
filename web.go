@@ -84,7 +84,7 @@ func logHandler(w http.ResponseWriter, r *http.Request, baseDir string) {
 	commit := vars["commit"]
 
 	// Note: Tighly coupled with the logPath in runPipeline.
-	outPath := path.Join(baseDir, "log", commit, LOG_FILE)
+	outPath := path.Join(baseDir, "log", commit, LogFilePath)
 	http.ServeFile(w, r, outPath)
 }
 
