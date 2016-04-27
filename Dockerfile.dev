@@ -13,4 +13,4 @@ WORKDIR /tmp
 # are provided by systemd/hanoverd.
 
 COPY ./ /go/src/github.com/scraperwiki/seaeye
-RUN go install github.com/scraperwiki/seaeye
+RUN go install github.com/scraperwiki/seaeye/cmd/seaeye

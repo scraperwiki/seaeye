@@ -1,4 +1,4 @@
-package main
+package seaeye
 
 import (
 	"encoding/json"

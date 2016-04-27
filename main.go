@@ -1,11 +1,9 @@
-package main
+package seaeye
 
 import (
 	"log"
 	"os"
 	"os/signal"
-
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 // LogFilePath defines the path to the build log stdout and stderr.
@@ -28,14 +26,6 @@ type SubEvent struct {
 	SHA    string
 	Type   string
 	Who    string
-}
-
-func init() {
-	if terminal.IsTerminal(int(os.Stdout.Fd())) {
-		log.SetPrefix("\x1b[34;1mseaeye\x1b[0m ")
-	} else {
-		log.SetPrefix("seaeye ")
-	}
 }
 
 // Run is the main entrypoint for a server.

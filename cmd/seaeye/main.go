@@ -5,10 +5,20 @@ import (
 	"log"
 	"os"
 
+	"golang.org/x/crypto/ssh/terminal"
+
 	"github.com/codegangsta/cli"
 )
 
 var version string
+
+func init() {
+	if terminal.IsTerminal(int(os.Stdout.Fd())) {
+		log.SetPrefix("\x1b[34;1mseaeye\x1b[0m ")
+	} else {
+		log.SetPrefix("seaeye ")
+	}
+}
 
 func main() {
 	app := cli.NewApp()
