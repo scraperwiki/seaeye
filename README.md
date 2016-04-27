@@ -2,7 +2,7 @@
 
 A simple continuous integration server using
 [hookbot](https://github.com/scraperwiki/hookbot) to subscribe to branch changes
-on Github hostes repositories.
+on Github hosted repositories.
 
 Assumptions:
 
@@ -13,8 +13,7 @@ directory on start time.
 - Repositories are cloned using the
   [git-prep-directory](https://github.com/scraperwiki/hanoverd/blob/master/cmd/git-prep-directory/main.go)
   command instead of `git clone`.
-- The cloned repository are build and tested using `make ci`.
-
+- Either `make ci` target or `.seaeye.yml` configuration file
 
 ## Workflow
 

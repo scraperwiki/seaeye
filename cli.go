@@ -20,7 +20,7 @@ func main() {
 }
 
 func ActionMain(c *cli.Context) {
-	port := assertEnv("PORT", "")
+	port := assertEnv("SEAEYE_PORT", "19515") // "SEAE"(YE)
 	endpoint := assertEnv("HOOKBOT_SUB_ENDPOINT", "")
 	user := assertEnv("GITHUB_USER", "")
 	token := assertEnv("GITHUB_TOKEN", "")
