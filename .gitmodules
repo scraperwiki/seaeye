@@ -1,15 +1,18 @@
 [submodule "vendor/github.com/gorilla/mux"]
 	path = vendor/github.com/gorilla/mux
 	url = https://github.com/gorilla/mux
-[submodule "vendor/github.com/codegangsta/cli"]
-	path = vendor/github.com/codegangsta/cli
-	url = https://github.com/codegangsta/cli
-[submodule "vendor/github.com/scraperwiki/git-prep-directory"]
-	path = vendor/github.com/scraperwiki/git-prep-directory
-	url = https://github.com/scraperwiki/git-prep-directory
+[submodule "vendor/github.com/gorilla/context"]
+	path = vendor/github.com/gorilla/context
+	url = https://github.com/gorilla/context
 [submodule "vendor/github.com/scraperwiki/hookbot"]
 	path = vendor/github.com/scraperwiki/hookbot
 	url = https://github.com/scraperwiki/hookbot
+[submodule "vendor/gopkg.in/yaml.v2"]
+	path = vendor/gopkg.in/yaml.v2
+	url = https://gopkg.in/yaml.v2
+[submodule "vendor/github.com/scraperwiki/git-prep-directory"]
+	path = vendor/github.com/scraperwiki/git-prep-directory
+	url = https://github.com/scraperwiki/git-prep-directory
 [submodule "vendor/github.com/vaughan0/go-ini"]
 	path = vendor/github.com/vaughan0/go-ini
 	url = https://github.com/vaughan0/go-ini
@@ -19,9 +22,12 @@
 [submodule "vendor/golang.org/x/sys"]
 	path = vendor/golang.org/x/sys
 	url = https://go.googlesource.com/sys
-[submodule "vendor/github.com/gorilla/context"]
-	path = vendor/github.com/gorilla/context
-	url = https://github.com/gorilla/context
+[submodule "vendor/github.com/codegangsta/cli"]
+	path = vendor/github.com/codegangsta/cli
+	url = https://github.com/codegangsta/cli
 [submodule "vendor/golang.org/x/crypto"]
 	path = vendor/golang.org/x/crypto
 	url = https://go.googlesource.com/crypto
+[submodule "vendor/golang.org/x/text"]
+	path = vendor/golang.org/x/text
+	url = https://go.googlesource.com/text

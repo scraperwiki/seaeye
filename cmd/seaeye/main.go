@@ -1,36 +1,41 @@
 package main
 
 import (
-	"log"
+	"flag"
+	"fmt"
 	"os"
 
-	"golang.org/x/crypto/ssh/terminal"
-
-	"github.com/codegangsta/cli"
-	"github.com/scraperwiki/seaeye"
+	"github.com/scraperwiki/seaeye/server"
 )
 
 var version string
 
-func init() {
-	if terminal.IsTerminal(int(os.Stdout.Fd())) {
-		log.SetPrefix("\x1b[34;1mseaeye\x1b[0m ")
-	} else {
-		log.SetPrefix("seaeye ")
-	}
-}
-
 func main() {
-	app := cli.NewApp()
-	app.Name = "seaeye"
-	app.Usage = "CI server integrating Github and Hookbot."
-	app.Version = version
-	app.Action = ActionMain
-	app.RunAndExitOnError()
+	var versionFlag bool
+
+	flag.BoolVar(&versionFlag, "v", false, "Show version information and exit")
+	flag.Usage = func() {
+		fmt.Fprintln(os.Stderr, "Usage: seaeye [OPTION]...")
+		fmt.Fprintln(os.Stderr, "Simple continuous integration server.")
+		fmt.Fprintln(os.Stderr)
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
+	if versionFlag {
+		fmt.Println("seaeye", version)
+		return
+	}
+
+	mainCmd()
 }
 
-// ActionMain is the main commandline command.
-func ActionMain(c *cli.Context) {
-	conf := seaeye.NewConfig()
-	seaeye.Start(conf)
+func mainCmd() {
+	s := seaeye.New()
+	if err := s.Start(); err != nil {
+		os.Exit(1)
+	}
+	if err := s.Stop(); err != nil {
+		os.Exit(1)
+	}
 }

@@ -1,0 +1,11 @@
+trigger:
+  hookbot: "wss://hmac@localhost:8080/sub/github.com/repo/scraperwiki/pdftables.com/%3Frecursive"
+
+ environment:
+  - FOO=BAR
+
+test:
+  - ["make", "it"]
+
+notify:
+  github: oauth-token

@@ -1,9 +1,13 @@
 VERSION?=$(shell git describe --tags --always --dirty)
 
-all: build
-
 sm:
 	git submodule update --init --recursive
+
+docker-build: sm
+	docker build -t seaeye .
+
+docker-run: docker-build
+	docker run --rm -it -p 8080:19515 -v workspace:/seaeye/workspace seaeye
 
 build: sm
 	go build -ldflags "-X main.version=$(VERSION)" ./cmd/seaeye
@@ -18,3 +22,5 @@ dist/seaeye_linux_amd64:
 
 rel: dist
 	hub release create -a dist $(VERSION)
+
+.PHONY: build dist docker-run docker-build rel sm

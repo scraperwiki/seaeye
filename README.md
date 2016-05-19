@@ -1,4 +1,13 @@
-# CI
+# Seaeye
+
+## Background
+
+If working closely with Github, starts with reading
+[Github: Building a CI server](https://developer.github.com/guides/building-a-ci-server/)
+as an adequate primer.
+
+
+## Overview
 
 A simple continuous integration server using
 [hookbot](https://github.com/scraperwiki/hookbot) to subscribe to branch changes
@@ -15,6 +24,42 @@ directory on start time.
   command instead of `git clone`.
 - Either `make ci` target or `.seaeye.yml` configuration file
 
+
 ## Workflow
 
 ![Workflow](http://www.websequencediagrams.com/cgi-bin/cdraw?lz=dGl0bGUgQ0kgd29ya2Zsb3cKCkNJLT5Ib29rYm90OiBTdWIKR2l0aHViLQALC1B1YiAoTmV3IHB1c2gpCgAnBy0tPkNJOiBQdWxsABIMQ0ktLT4APgYAMwdQZW5kaW5nOiBDbG9uaW5nAB8FADcFQ2xvbmUAFhxCdWlsZGluZyAmIFRlc3QAMA0AFwUAEgcAYxNTdWNjZXNzL0ZhaWx1cmUpCgo&s=napkin)
+
+
+## Setup
+
+Any interaction with Github initiated by Seaeye is authenticated and authorized
+against a Github user. This allows pulling from repositories and updating commit
+statuses. Don't add the machine user as collaborator but as a member to the new
+team.
+
+1. [Generate a new SSH key](https://help.github.com/articles/generating-an-ssh-key/)
+2. [Create a new Github Team](https://help.github.com/articles/creating-a-team/)
+   (e.g. `bots`)
+3. [Create a new Github _Machine user_](https://help.github.com/articles/signing-up-for-a-new-github-account/)
+   (e.g. `seaeye`)
+4. [Add the new organization member to the new team](https://help.github.com/articles/adding-organization-members-to-a-team/)
+
+**Note:** Adding a machine user as a collaborator always grants read/write
+access while adding a machine user to a team grants the permissions of the team.
+
+**Note:** Automating the creation of accounts is prohibited by Github's ToS:
+
+> Accounts registered by "bots" or other automated methods are not permitted.
+
+**Note:** Most private Github repositories have Git submodules linked to other
+private Github repositories, so using Github's _Deploy keys_ would require a
+more complex setup (configuring Seaeye's access rights on the server side
+instead of on Github administration side, which will require e.g. CloudFormation
+changes) or reusing the same key. It also leaves the task of pushing commit
+statuses open.
+
+
+## Resources
+
+- [Github: Building a CI server](https://developer.github.com/guides/building-a-ci-server/)
+- [Github: Managing deploy keys](https://developer.github.com/guides/managing-deploy-keys/)
