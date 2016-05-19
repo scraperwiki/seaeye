@@ -10,49 +10,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"mime"
 	"net/http"
-)
 
-// GithubPushEvent describes a minimal schema of a Github API v3 push event.
-type GithubPushEvent struct {
-	After      string `json:",omitempty"`
-	Ref        string `json:",omitempty"`
-	Repository struct {
-		FullName string `json:"full_name,omitempty"`
-		SSHURL   string `json:"ssh_url,omitempty"`
-	} `json:",omitempty"`
-	Pusher struct {
-		Name string `json:",omitempty"`
-	} `json:",omitempty"`
-}
+	"github.com/google/go-github/github"
+)
 
 // GithubTrigger can parse and send (minimal) Github API v3 push events.
 type GithubTrigger struct{}
 
-// PushEventFromRequest parses the body of a POST request and returns a
-// (minimal) Github API v3 push event.
-func (g *GithubTrigger) PushEventFromRequest(req *http.Request) (*GithubPushEvent, error) {
-	contentTypeHeader := req.Header.Get("Content-Type")
-	contentType, _, _ := mime.ParseMediaType(contentTypeHeader)
-	if contentType != "application/json" && contentType != "application/x-www-form-urlencoded" {
-		return nil, fmt.Errorf("unsupported content-type: %s", contentType)
-	}
-	eventTypeHeader := req.Header.Get("X-Github-Event")
-	if eventTypeHeader != "push" {
-		return nil, fmt.Errorf("unsupported event-type: %s", eventTypeHeader)
-	}
-
-	var e GithubPushEvent
-	if err := json.NewDecoder(req.Body).Decode(&e); err != nil {
-		return nil, fmt.Errorf("failed to parse event: %v", err)
-	}
-
-	return &e, nil
-}
-
 // Post sends a (minimal) Github API v3 push event to a given URL.
-func (g *GithubTrigger) Post(url string, e *GithubPushEvent) error {
+func (g *GithubTrigger) Post(url string, e *github.PushEvent) error {
 	b, err := json.Marshal(e)
 	if err != nil {
 		return fmt.Errorf("failed to marshal github push event: %v", err)

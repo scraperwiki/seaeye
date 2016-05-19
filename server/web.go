@@ -1,3 +1,5 @@
+// TODO(uwe): Simplify and switch to gin+graceful
+
 package seaeye
 
 import (
@@ -7,16 +9,18 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"path"
+	"strings"
 	"sync"
 	"time"
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 )
 
 // Server is a http.Server that can gracefully shut down.
-// TODO(uwe): Simplify and switch to https://github.com/tylerb/graceful.
 type Server struct {
 	http.Server
 	Listener   net.Listener
@@ -26,30 +30,30 @@ type Server struct {
 
 // Context holds a context for http.FuncHandler.
 type Context struct {
-	conf   *Config
-	db     *ManifestStore
+	config *Config
 	builds chan *Build
 }
 
 // CtxHandlerFunc defines a http.FuncHandler with context.
 type CtxHandlerFunc func(ctx *Context, w http.ResponseWriter, req *http.Request)
 
-// NewServer initializes a new HTTP server. The difference to a standard
+type httpError struct {
+	error
+	Status int
+}
+
+// NewWebServer initializes a new HTTP server. The difference to a standard
 // net.http server is that it knows about the listener and can stop itself
 // gracefully.
-func NewServer(conf *Config, db *ManifestStore, builds chan *Build) *Server {
+func NewWebServer(conf *Config, builds chan *Build) *Server {
 	ctx := &Context{
-		conf:   conf,
-		db:     db,
+		config: conf,
 		builds: builds,
 	}
 
 	router := mux.NewRouter()
-	router.Path("/api/{id}").Methods("GET").HandlerFunc(wrap(ctx, getManifestHandler))
-	router.Path("/api/{id}").Methods("PUT", "POST").HandlerFunc(wrap(ctx, putManifestHandler))
-	router.Path("/api/{id}").Methods("DELETE").HandlerFunc(wrap(ctx, deleteManifestHandler))
-	router.Path("/api/{id}/webhook").Methods("PUT", "POST").HandlerFunc(wrap(ctx, runManifestHandler))
-	router.Path("/api/{id}/status/{rev}").Methods("GET").HandlerFunc(wrap(ctx, statusHandler))
+	router.Path("/jobs/{id}/status/{rev}").Methods("GET").HandlerFunc(wrap(ctx, statusJobHandler))
+	router.Path("/webhook").Methods("PUT", "POST").HandlerFunc(wrap(ctx, webhookHandler))
 
 	srv := &Server{}
 	srv.Addr = conf.HostPort
@@ -115,136 +119,98 @@ func wrap(ctx *Context, handler CtxHandlerFunc) http.HandlerFunc {
 	}
 }
 
-func getManifestHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
-	id := url.QueryEscape(mux.Vars(req)["id"])
+func webhookHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
+	c := NewOAuthGithubClient(ctx.config.GithubToken)
 
-	m, ok := ctx.db.Get(id)
-	if !ok {
-		http.Error(w, "manifest not found", http.StatusNotFound)
-		return
-	}
-
-	d, err := yaml.Marshal(&m)
+	s, err := sourceFromRequest(req, c)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("Error: [web] Invalid github webhook push event: %v", err)
+		sendHTTPError(w, err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write(d)
+	m, err := manifestFromSource(s, c)
+	if err != nil {
+		log.Printf("Error: [web] Failed to find valid remote manifest: %v", err)
+		sendHTTPError(w, err)
+		return
+	}
+
+	j := &Job{Config: ctx.config, Manifest: m}
+	ctx.builds <- &Build{Job: j, Source: s}
 }
 
-func putManifestHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
-	id := url.QueryEscape(mux.Vars(req)["id"])
-
-	b, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	m := &Manifest{}
-	if err := yaml.Unmarshal(b, m); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// Keep a (self-)reference for later use.
-	if m.ID == "" {
-		m.ID = id
-	}
-
-	e, err := m.Parse(ctx.conf)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if _, ok := ctx.db.Get(id); ok {
-		http.Error(w, "manifest already exists", http.StatusConflict)
-		return
-	}
-
-	// Start trigger if configured.
-	if e.Trigger != nil {
-		hook := func(event *GithubPushEvent) error {
-			url := fmt.Sprintf("%s/api/%s/webhook", ctx.conf.HostPort, id)
-			g := &GithubTrigger{}
-			return g.Post(url, event)
-		}
-		e.Trigger.Hook = hook
-
-		if err := e.Trigger.Start(); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	}
-
-	log.Printf("Info: [web] Storing manifest: %s", id)
-	ctx.db.Put(id, m)
-}
-
-func deleteManifestHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
-	id := url.QueryEscape(mux.Vars(req)["id"])
-
-	m, ok := ctx.db.Get(id)
-	if !ok {
-		http.Error(w, "manifest not found", http.StatusNotFound)
-		return
-	}
-
-	e, err := m.Parse(ctx.conf)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := e.Trigger.Stop(); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	ctx.db.Put(id, nil)
-}
-
-func runManifestHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
-	id := url.QueryEscape(mux.Vars(req)["id"])
-
-	m, ok := ctx.db.Get(id)
-	if !ok {
-		http.Error(w, "manifest not found", http.StatusNotFound)
-		return
-	}
-
-	j, err := m.Parse(ctx.conf)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	t := &GithubTrigger{}
-	p, err := t.PushEventFromRequest(req)
-	if err != nil {
-		log.Printf("Error: [web] Failed to parse github Webhook push event: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	if p.After == "" || p.Repository.FullName == "" || p.Repository.SSHURL == "" {
-		err := fmt.Errorf("missing field(s): after=%s, repository.full_name=%s, repository.ssh_url=%s",
-			p.After, p.Repository.FullName, p.Repository.SSHURL)
-		log.Printf("Error: [web] Invalid github Webhook push event: %v", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	ctx.builds <- &Build{Job: j, Parameter: p}
-}
-
-func statusHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
+func statusJobHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := url.QueryEscape(vars["id"])
 	rev := url.QueryEscape(vars["rev"])
 
 	logFilePath := LogFilePath(id, rev)
 	http.ServeFile(w, req, logFilePath)
+}
+
+func sourceFromRequest(req *http.Request, c *OAuthGithubClient) (*Source, error) {
+	e, err := c.PushEventFromRequest(req)
+	if err != nil {
+		err := fmt.Errorf("failed to parse: %v", err)
+		return nil, &httpError{error: err, Status: http.StatusBadRequest}
+	}
+
+	if *e.After == "" || *e.Repo.FullName == "" || *e.Repo.URL == "" {
+		err := fmt.Errorf("missing field(s): after=%s, repository.full_name=%s, repository.ssh_url=%s",
+			*e.After, *e.Repo.FullName, *e.Repo.URL)
+		return nil, &httpError{error: err, Status: http.StatusBadRequest}
+	}
+
+	parts := strings.Split(*e.Repo.FullName, "/")
+	if parts == nil || len(parts) != 2 {
+		err := fmt.Errorf("invalid owner/repo %s", *e.Repo.FullName)
+		return nil, &httpError{error: err, Status: http.StatusBadRequest}
+	}
+
+	s := &Source{
+		Owner: parts[0],
+		Repo:  parts[1],
+		Rev:   *e.After,
+		URL:   *e.Repo.URL,
+	}
+	return s, nil
+}
+
+func manifestFromSource(s *Source, c *OAuthGithubClient) (*Manifest, error) {
+	opt := &github.RepositoryContentGetOptions{Ref: s.Rev}
+	r, err := c.Repositories.DownloadContents(s.Owner, s.Repo, ".seaeye.yml", opt)
+	if err != nil {
+		return nil, &httpError{error: err, Status: http.StatusPreconditionRequired}
+	}
+	defer r.Close()
+
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, &httpError{error: err, Status: http.StatusPreconditionRequired}
+	}
+
+	m := &Manifest{}
+	if err := yaml.Unmarshal(b, m); err != nil {
+		return nil, &httpError{error: err, Status: http.StatusPreconditionRequired}
+	}
+
+	if m.ID == "" {
+		// Ensure we have an ID so the user can find logs for this manifest's job.
+		m.ID = url.QueryEscape(path.Join(s.Owner, s.Repo))
+	}
+
+	if err := m.Validate(); err != nil {
+		return nil, &httpError{error: err, Status: http.StatusPreconditionRequired}
+	}
+
+	return m, nil
+}
+
+func sendHTTPError(w http.ResponseWriter, err error) {
+	if httpErr, ok := err.(httpError); ok {
+		http.Error(w, httpErr.Error(), httpErr.Status)
+	} else {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 }

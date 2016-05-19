@@ -6,13 +6,16 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/google/go-github/github"
 )
 
 // App specifies an application state and lifecycle.
 type App struct {
-	conf      *Config
-	builds    *BuildQueue
-	server    *Server
+	Builds    *BuildQueue
+	Config    *Config
+	Hookbot   *HookbotTrigger
+	WebServer *Server
 	startTime time.Time
 }
 
@@ -25,57 +28,78 @@ type BuildQueue struct {
 // Build specifies a specific build for a job given a github push event as
 // parameter.
 type Build struct {
-	Job       *Job
-	Parameter *GithubPushEvent
+	Job    *Job
+	Source *Source
 }
 
-// New instantiates a new application.
-func New() *App {
-	return &App{conf: NewConfig()}
-}
-
-// Start is the main entrypoint for the server.
+// Start starts the server: web > build > hookbot > signals.
 func (a *App) Start() error {
+	log.Println("Info: [app] Starting")
 	if a.startTime.IsZero() {
 		a.startTime = time.Now()
 	}
-	log.Println("Info: [app] Starting")
 
-	log.Println("Info: [app] Loading manifest store")
-	manifestStore := NewManifestStore()
-
-	log.Println("Info: [app] Creating build queue")
-	a.builds = &BuildQueue{
-		BuildCh: make(chan *Build, 10),
-		doneCh:  make(chan struct{}),
+	if a.WebServer == nil {
+		log.Println("Info: [app] Creating web server")
+		a.WebServer = NewWebServer(a.Config, a.Builds.BuildCh)
 	}
-	go waitForBuilds(a.builds)
-
-	a.server = NewServer(a.conf, manifestStore, a.builds.BuildCh)
-	log.Printf("Info: [app] Starting web server %s", a.server.Addr)
-	if err := a.server.Start(); err != nil {
-		log.Printf("Error: [app] Can't start web server: %v", err)
+	log.Printf("Info: [app] Starting web server %s", a.WebServer.Addr)
+	if err := a.WebServer.Start(); err != nil {
+		log.Printf("Error: [app] Failed to start web server: %v", err)
 		return err
 	}
 
-	log.Println("Info: [app] Started")
+	if a.Builds == nil {
+		log.Println("Info: [app] Creating build queue")
+		a.Builds = &BuildQueue{
+			BuildCh: make(chan *Build, 50),
+			doneCh:  make(chan struct{}),
+		}
+	}
+	log.Printf("Info: [app] Waiting for builds: %d", cap(a.Builds.BuildCh))
+	go waitForBuilds(a.Builds)
+
+	if a.Hookbot == nil {
+		log.Println("Info: [app] Creating hookbot subscriber")
+		a.Hookbot = &HookbotTrigger{
+			Endpoint: a.Config.HookbotEndpoint,
+			Hook: func(event *github.PushEvent) error {
+				g := &GithubTrigger{}
+				url := a.Config.HostPort + "/webhook"
+				return g.Post(url, event)
+			},
+		}
+	}
+	log.Printf("Info: [app] Starting hookbot subscriber: %s", a.Config.HookbotEndpoint)
+	a.Hookbot.Start()
+
+	log.Println("Info: [app] Waiting for signals")
 	a.waitForSignals()
+	log.Println("Info: [app] Started")
 	return nil
 }
 
-// Stop shuts down the server.
+// Stop shuts down the server: hookbot > build > web.
 func (a *App) Stop() error {
 	log.Println("Info: [app] Stopping")
 
-	log.Println("Info: [app] Stopping web server")
-	if err := a.server.Stop(); err != nil {
-		log.Printf("Error: [app] Failed to stop web server: %v", err)
-		return err
+	if a.Hookbot != nil {
+		log.Println("Info: [app] Stopping hookbot subscriber")
+		a.Hookbot.Stop()
 	}
 
-	log.Println("Info: [app] Closing build queue")
-	a.builds.doneCh <- struct{}{}
-	log.Println("Info: [app] Closed build queue")
+	if a.Builds != nil {
+		log.Println("Info: [app] Closing build queue")
+		a.Builds.doneCh <- struct{}{}
+	}
+
+	if a.WebServer != nil {
+		log.Println("Info: [app] Stopping web server")
+		if err := a.WebServer.Stop(); err != nil {
+			log.Printf("Error: [app] Failed to stop web server: %v", err)
+			return err
+		}
+	}
 
 	log.Println("Info: [app] Stopped")
 	return nil
@@ -87,8 +111,8 @@ func waitForBuilds(builds *BuildQueue) {
 	for {
 		select {
 		case b, _ := <-builds.BuildCh:
-			if err := b.Job.Execute(b.Parameter); err != nil {
-				log.Println("Warn: [app] Build failed: ")
+			if err := b.Job.Execute(b.Source); err != nil {
+				log.Printf("Error: [app] Build failed: %v", err)
 			}
 		case <-builds.doneCh:
 			return
@@ -127,6 +151,6 @@ func (a *App) reload() {
 func (a *App) printStats() {
 	log.Printf("Info: [app] Stats /app/start_time: %v", a.startTime)
 	log.Printf("Info: [app] Stats /app/uptime: %v", time.Now().Sub(a.startTime))
-	log.Printf("Info: [app] Stats /app/build_queue/count: %v", len(a.builds.BuildCh))
-	log.Printf("Info: [app] Stats /server/active_connections: %v", a.server.ConnActive)
+	log.Printf("Info: [app] Stats /app/build_queue/count: %v", len(a.Builds.BuildCh))
+	log.Printf("Info: [app] Stats /server/active_connections: %v", a.WebServer.ConnActive)
 }

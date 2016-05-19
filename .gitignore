@@ -2,4 +2,6 @@
 /log/
 /src/
 /seaeye
+
 /.seaeye.yml
+/env.list

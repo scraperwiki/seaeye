@@ -3,6 +3,7 @@ package seaeye
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -18,23 +19,23 @@ const (
 
 // Job is responsible for an describes all necessary modules to execute a job.
 type Job struct {
-	Config   *Config         // ...need URLPrefix for targetURL
-	Fetcher  *GithubFetcher  // ...want to clone a git repo before testing.
-	Logger   *FileLogger     // ...want to provide a persistent durable log that can be accessed via REST endpoint.
-	Manifest *Manifest       // ...need environment and test script.
-	Notifier *GithubNotifier // ...talk the notifier from the executor.
-	Trigger  *HookbotTrigger // ...because we need to start the trigger hook from web.
+	Config   *Config         // ...to prefix targetURL with BaseURL.
+	Fetcher  *GithubFetcher  // ...to clone git repo.
+	ID       string          // ...to identify for logs.
+	Logger   *FileLogger     // ...to accessed persistent and durable logs via REST endpoint.
+	Manifest *Manifest       // ...to provide envvars and test instructions.
+	Notifier *GithubNotifier // ...to update commmit statuses.
 }
 
 // Execute executes a given task: 1. Setup, 2. Run (2a. Fetch, 2b. Test).
-func (j *Job) Execute(target *GithubPushEvent) error {
-	if err := j.Setup(target); err != nil {
+func (j *Job) Execute(s *Source) error {
+	if err := j.setup(s); err != nil {
 		return err
 	}
 	defer j.Logger.outFile.Close()
 
 	j.Logger.Println("Info: [executor] Running")
-	if err := j.Run(); err != nil {
+	if err := j.run(); err != nil {
 		j.Logger.Printf("Error: [executor] Run failed: %v", err)
 		return err
 	}
@@ -42,16 +43,15 @@ func (j *Job) Execute(target *GithubPushEvent) error {
 	return nil
 }
 
-// Setup sets up notifier and logger for execution run.
-func (j *Job) Setup(target *GithubPushEvent) error {
-	repoName := target.Repository.FullName
-	repoURL := target.Repository.SSHURL
-	rev := target.After
+// Setup ensures that all relevant job parts are configured and instatiated.
+func (j *Job) setup(s *Source) error {
+	if j.ID == "" {
+		j.ID = url.QueryEscape(path.Join(s.Owner, s.Repo))
+	}
 
 	if j.Logger == nil {
-		taskID := taskID(j.Manifest.ID, rev)
-		logFilePath := LogFilePath(j.Manifest.ID, rev)
-		logger, err := NewFileLogger(logFilePath, taskID+" ", log.LstdFlags)
+		logFilePath := LogFilePath(j.ID, s.Rev)
+		logger, err := NewFileLogger(logFilePath, j.ID+" ", log.LstdFlags)
 		if err != nil {
 			return err
 		}
@@ -61,27 +61,31 @@ func (j *Job) Setup(target *GithubPushEvent) error {
 
 	if j.Fetcher == nil {
 		f := &GithubFetcher{
-			BaseDir:  path.Join(fetchBaseDir, repoName),
-			RepoName: repoName,
-			RepoURL:  repoURL,
-			Rev:      rev,
+			BaseDir: path.Join(fetchBaseDir, s.Owner, s.Repo),
+			Source:  s,
 		}
 		j.Fetcher = f
 	}
 
-	if j.Notifier != nil {
-		targetURL := fmt.Sprintf("%s/api/%s/status/%s", j.Config.URLPrefix, j.Manifest.ID, rev)
-		j.Notifier.SetContext(repoName, rev, targetURL)
+	if j.Notifier == nil {
+		c := NewOAuthGithubClient(j.Config.GithubToken)
+		t := j.Config.BaseURL + fmt.Sprintf("/jobs/%s/status/%s", j.ID, s.Rev)
+		n := &GithubNotifier{
+			Client:    c,
+			Source:    s,
+			TargetURL: t,
+		}
+		j.Notifier = n
 	}
 
 	return nil
 }
 
 // Run executes the pipeline.
-func (j *Job) Run() error {
+func (j *Job) run() error {
 	_ = j.Notifier.Notify("pending", "Starting...")
 
-	// FIXME(uwe): Either fetch into a docker container already running, or
+	// TODO(uwe): Either fetch into a docker container already running, or
 	// fetch first outside container and then copy all files into the container,
 	// build it and then run it. Or: Fetch files first outside container, no
 	// special built just run a standard container and volume mount src files.
@@ -141,13 +145,9 @@ func (j *Job) Test(wd string) error {
 	return nil
 }
 
-// LogFilePath assembles a log file path from a manifest id and revision..
-func LogFilePath(id, rev string) string {
-	idDir := strings.Replace(id, "/", "_", -1)
-	return path.Join(logBaseDir, idDir, taskID(id, rev), "log.txt")
-}
-
-// taskID assembles a task id from a manifest id and revision.
-func taskID(id, rev string) string {
-	return strings.Replace(path.Join(id, rev), "/", "_", -1)
+// LogFilePath assembles a log file path from a job id and revision.
+func LogFilePath(jobID, rev string) string {
+	saneID := strings.Replace(jobID, "/", "_", -1) // e.g.: scraperwiki/foo
+	saneRev := strings.Replace(rev, "/", "_", -1)  // e.g.: refs/origin/master
+	return path.Join(logBaseDir, saneID, saneRev, "log.txt")
 }

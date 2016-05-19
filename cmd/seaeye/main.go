@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/scraperwiki/seaeye/server"
@@ -31,11 +32,13 @@ func main() {
 }
 
 func mainCmd() {
-	s := seaeye.New()
-	if err := s.Start(); err != nil {
+	a := &seaeye.App{Config: seaeye.NewConfig()}
+	log.Println("Info: [cmd] Starting")
+	if err := a.Start(); err != nil {
 		os.Exit(1)
 	}
-	if err := s.Stop(); err != nil {
+	log.Println("Info: [cmd] Stopping")
+	if err := a.Stop(); err != nil {
 		os.Exit(1)
 	}
 }

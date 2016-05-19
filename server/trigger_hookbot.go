@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"sync"
 
+	"github.com/google/go-github/github"
 	"github.com/scraperwiki/hookbot/pkg/listen"
 )
 
@@ -28,19 +28,13 @@ type SubEvent struct {
 	Who    string
 }
 
-// Listeners holds a synchronizable map of id to listener's finish channel.
-type Listeners struct {
-	m     map[string]chan struct{}
-	mutex sync.RWMutex
-}
-
-var listeners = &Listeners{m: make(map[string]chan struct{})}
-
 // HookbotTrigger specifies a Hookbot subscriber instance.
 type HookbotTrigger struct {
-	ID       string
 	Endpoint string
-	Hook     func(e *GithubPushEvent) error
+	Hook     func(e *github.PushEvent) error
+	errCh    <-chan error
+	finishCh chan struct{}
+	msgCh    <-chan []byte
 }
 
 // Start starts a retrying Hookbot listener subscribing to a given endpoint.
@@ -49,28 +43,13 @@ func (h *HookbotTrigger) Start() error {
 	msgCh, errCh := listen.RetryingWatch(h.Endpoint, http.Header{}, finishCh)
 	go h.errorHandler(errCh)
 	go h.msgHandler(msgCh)
-
-	listeners.mutex.Lock()
-	listeners.m[h.ID] = finishCh
-	listeners.mutex.Unlock()
-
 	return nil
 }
 
 // Stop unsubscribes and stops a retrying Hookbot listener.
 func (h *HookbotTrigger) Stop() error {
-	// TODO(uwe): Not really unique criteria. Multiple manifest could have the
-	// same hookbot trigger endpoint.
-	t, ok := listeners.m[h.ID]
-	if !ok {
-		return fmt.Errorf("no trigger found")
-	}
-
-	listeners.mutex.Lock()
-	close(t)
-	delete(listeners.m, h.ID)
-	listeners.mutex.Unlock()
-
+	h.finishCh <- struct{}{}
+	close(h.finishCh)
 	return nil
 }
 
@@ -106,22 +85,25 @@ func (h *HookbotTrigger) msgHandler(msgCh <-chan []byte) {
 			continue
 		}
 
+		ref := fmt.Sprintf("refs/heads/%s", event.Branch)
+		sshURL := fmt.Sprintf("git@github.com:%s.git", event.Repo)
+
+		// Convert Hookbot subscription event back to Github WebHook Push event.
+		var e github.PushEvent
+		e.After = &event.SHA
+		e.Pusher.Name = &event.Who
+		e.Repo.FullName = &event.Repo
+		e.Repo.URL = &sshURL
+		e.Ref = &ref
+
 		if h.Hook == nil {
-			log.Println("Warn: [trigger_hookbot] No hook specified. Dropping event")
+			log.Printf("Warn: [trigger_hookbot] No hook defined for: %v", e)
 			continue
 		}
 
-		// Convert Hookbot subscription event back to Github WebHook Push event.
-		e := &GithubPushEvent{}
-		e.After = event.SHA
-		e.Pusher.Name = event.Who
-		e.Repository.FullName = event.Repo
-		e.Repository.SSHURL = fmt.Sprintf("git@github.com:%s.git", event.Repo)
-		e.Ref = fmt.Sprintf("refs/heads/%s", event.Branch)
-
 		// Execute hooks sequential for now, as parallel will likely cause
 		// resource conflicts and/or race-conditions.
-		if err := h.Hook(e); err != nil {
+		if err := h.Hook(&e); err != nil {
 			log.Printf("Error: [trigger_hookbot] Hook failed: %v %v", e, err)
 		}
 	}

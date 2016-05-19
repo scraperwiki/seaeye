@@ -7,7 +7,7 @@ docker-build: sm
 	docker build -t seaeye .
 
 docker-run: docker-build
-	docker run --rm -it -p 8080:19515 -v workspace:/seaeye/workspace seaeye
+	docker run --rm -it -p 8080:19515 --env-file=env.list -v workspace:/seaeye/workspace seaeye
 
 build: sm
 	go build -ldflags "-X main.version=$(VERSION)" ./cmd/seaeye
