@@ -32,11 +32,16 @@ func main() {
 }
 
 func mainCmd() {
-	a := &seaeye.App{Config: seaeye.NewConfig()}
+	config := seaeye.NewConfig()
+	config.Version = version
+
+	a := &seaeye.App{Config: config}
+
 	log.Println("Info: [cmd] Starting")
 	if err := a.Start(); err != nil {
 		os.Exit(1)
 	}
+
 	log.Println("Info: [cmd] Stopping")
 	if err := a.Stop(); err != nil {
 		os.Exit(1)

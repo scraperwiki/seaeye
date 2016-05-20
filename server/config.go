@@ -21,6 +21,8 @@ type Config struct {
 	HookbotEndpoint string
 	// HostPort holds Seaeye's server host and port.
 	HostPort string
+	// Seaeye version
+	Version string
 }
 
 // NewConfig creates a new configuration with a mix of default values and
