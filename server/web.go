@@ -54,8 +54,10 @@ func NewWebServer(conf *Config, builds chan *Build, stats func() Stats) *Server 
 	}
 
 	router := mux.NewRouter()
+	router.Path("/").Methods("GET").HandlerFunc(wrap(ctx, indexHandler))
 	router.Path("/health").Methods("GET").HandlerFunc(wrap(ctx, healthHandler))
 	router.Path("/jobs/{id}/status/{rev}").Methods("GET").HandlerFunc(wrap(ctx, statusJobHandler))
+	router.Path("/login").Methods("GET").HandlerFunc(wrap(ctx, loginHandler))
 	router.Path("/webhook").Methods("PUT", "POST").HandlerFunc(wrap(ctx, webhookHandler))
 
 	srv := &Server{}
@@ -122,11 +124,19 @@ func wrap(ctx *Context, handler CtxHandlerFunc) http.HandlerFunc {
 	}
 }
 
+func indexHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
+	// TODO(uwe): implement
+}
+
 func healthHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 	stats := ctx.stats()
 	for k, v := range stats {
 		fmt.Fprintf(w, "%s: %v", k, v)
 	}
+}
+
+func loginHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
+	// TODO(uwe): implement
 }
 
 func webhookHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
