@@ -44,7 +44,7 @@ ENV HOME=/home/nobody
 COPY vendor /go/src/github.com/scraperwiki/seaeye/vendor
 RUN go install -v github.com/scraperwiki/seaeye/vendor/...
 COPY cmd /go/src/github.com/scraperwiki/seaeye/cmd
-COPY server /go/src/github.com/scraperwiki/seaeye/server
+COPY pkg /go/src/github.com/scraperwiki/seaeye/pkg
 RUN go install -v github.com/scraperwiki/seaeye/cmd/seaeye
 RUN set -x  \
  && mkdir -p /seaeye/log /seaeye/workspace \
