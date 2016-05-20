@@ -16,16 +16,16 @@ type GithubFetcher struct {
 
 // Fetch clones a Github repositry and checks out a given revision.
 func (g *GithubFetcher) Fetch() error {
-	log.Printf("Info: [fetcher_github] Running git-prep-directory: %s %s %s",
+	log.Printf("[I][fetcher_github] Running git-prep-directory: %s %s %s",
 		g.BaseDir, g.Source.URL, g.Source.Rev)
 	buildDir, err := git.PrepBuildDirectory(g.BaseDir, g.Source.URL, g.Source.Rev)
 	if err != nil {
-		log.Printf("Error: [fetcher_github] Fetch failed: %v", err)
+		log.Printf("[E][fetcher_github] Fetch failed: %v", err)
 		return fmt.Errorf("fetch for %s %s failed: %v", g.Source.URL, g.Source.Rev, err)
 	}
 
 	g.buildDir = buildDir
-	log.Printf("Info: [fetcher_github] Fetch succeeded: %s", g.buildDir.Dir)
+	log.Printf("[I][fetcher_github] Fetch succeeded: %s", g.buildDir.Dir)
 	return nil
 }
 
@@ -35,9 +35,9 @@ func (g *GithubFetcher) Cleanup() {
 		return
 	}
 
-	log.Printf("Info: [fetcher_github] Starting cleanup")
+	log.Printf("[I][fetcher_github] Starting cleanup")
 	g.buildDir.Cleanup()
-	log.Printf("Info: [fetcher_github] Cleanup finished")
+	log.Printf("[I][fetcher_github] Cleanup finished")
 }
 
 // CheckoutDir returns the directory of the checked out files.

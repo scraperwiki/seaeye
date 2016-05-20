@@ -28,7 +28,7 @@ type Config struct {
 // NewConfig creates a new configuration with a mix of default values and
 // provided environment variables.
 func NewConfig() *Config {
-	log.Println("Info: [config] Loading configuration")
+	log.Println("[I][config] Loading configuration")
 
 	conf := &Config{
 		BaseURL:         getenvOr("SEAEYE_BASEURL", configDefaultBaseURL),

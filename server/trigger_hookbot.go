@@ -55,7 +55,7 @@ func (h *HookbotTrigger) Stop() error {
 
 func (h *HookbotTrigger) errorHandler(errCh <-chan error) {
 	for err := range errCh {
-		log.Printf("Warn: [trigger_hookbot] Subscription error for %s: %v", h.Endpoint, err)
+		log.Printf("[W][trigger_hookbot] Subscription error for %s: %v", h.Endpoint, err)
 	}
 }
 
@@ -69,11 +69,11 @@ func (h *HookbotTrigger) msgHandler(msgCh <-chan []byte) {
 
 		var event SubEvent
 		if err := json.Unmarshal(msg, &event); err != nil {
-			log.Printf("Warn: [trigger_hookbot] Event error: %v: %s", err, string(msg[:]))
+			log.Printf("[W][trigger_hookbot] Event [E]%v: %s", err, string(msg[:]))
 			continue
 		}
 
-		log.Printf("Debug: [trigger_hookbot] Event: %s %s", event.Repo, event.SHA)
+		log.Printf("[D][trigger_hookbot] Event: %s %s", event.Repo, event.SHA)
 
 		if event.Type != "push" {
 			continue
@@ -97,14 +97,14 @@ func (h *HookbotTrigger) msgHandler(msgCh <-chan []byte) {
 		e.Ref = &ref
 
 		if h.Hook == nil {
-			log.Printf("Warn: [trigger_hookbot] No hook defined for: %v", e)
+			log.Printf("[W][trigger_hookbot] No hook defined for: %v", e)
 			continue
 		}
 
 		// Execute hooks sequential for now, as parallel will likely cause
 		// resource conflicts and/or race-conditions.
 		if err := h.Hook(&e); err != nil {
-			log.Printf("Error: [trigger_hookbot] Hook failed: %v %v", e, err)
+			log.Printf("[E][trigger_hookbot] Hook failed: %v %v", e, err)
 		}
 	}
 }

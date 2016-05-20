@@ -24,10 +24,10 @@ func (g *GithubNotifier) Notify(state, desc string) error {
 		TargetURL:   &g.TargetURL,
 	}
 
-	log.Printf("Info: [notifier_github] Notifying Github: %s - %s", *s.State, *s.Description)
+	log.Printf("[I][notifier_github] Notifying Github: %s - %s", *s.State, *s.Description)
 	_, resp, err := g.Client.Repositories.CreateStatus(g.Source.Owner, g.Source.Repo, g.Source.Rev, s)
 	if err != nil {
-		log.Printf("Error: [notifier_github] Failed to notify Github: %v", err)
+		log.Printf("[E][notifier_github] Failed to notify Github: %v", err)
 		return err
 	}
 	defer resp.Body.Close()

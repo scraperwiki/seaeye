@@ -37,33 +37,33 @@ type Stats map[string]interface{}
 
 // Start starts the server: web > build > hookbot > signals.
 func (a *App) Start() error {
-	log.Println("Info: [app] Starting")
+	log.Println("[I][app] Starting")
 	if a.startTime.IsZero() {
 		a.startTime = time.Now()
 	}
 
 	if a.WebServer == nil {
-		log.Println("Info: [app] Creating web server")
+		log.Println("[I][app] Creating web server")
 		a.WebServer = NewWebServer(a.Config, a.Builds.BuildCh, a.stats)
 	}
-	log.Printf("Info: [app] Starting web server %s", a.WebServer.Addr)
+	log.Printf("[I][app] Starting web server %s", a.WebServer.Addr)
 	if err := a.WebServer.Start(); err != nil {
-		log.Printf("Error: [app] Failed to start web server: %v", err)
+		log.Printf("[E][app] Failed to start web server: %v", err)
 		return err
 	}
 
 	if a.Builds == nil {
-		log.Println("Info: [app] Creating build queue")
+		log.Println("[I][app] Creating build queue")
 		a.Builds = &BuildQueue{
 			BuildCh: make(chan *Build, 50),
 			doneCh:  make(chan struct{}),
 		}
 	}
-	log.Printf("Info: [app] Waiting for builds: %d", cap(a.Builds.BuildCh))
+	log.Printf("[I][app] Waiting for builds: %d", cap(a.Builds.BuildCh))
 	go waitForBuilds(a.Builds)
 
 	if a.Hookbot == nil {
-		log.Println("Info: [app] Creating hookbot subscriber")
+		log.Println("[I][app] Creating hookbot subscriber")
 		a.Hookbot = &HookbotTrigger{
 			Endpoint: a.Config.HookbotEndpoint,
 			Hook: func(event *github.PushEvent) error {
@@ -73,38 +73,38 @@ func (a *App) Start() error {
 			},
 		}
 	}
-	log.Printf("Info: [app] Starting hookbot subscriber: %s", a.Config.HookbotEndpoint)
+	log.Printf("[I][app] Starting hookbot subscriber: %s", a.Config.HookbotEndpoint)
 	a.Hookbot.Start()
 
-	log.Println("Info: [app] Waiting for signals")
+	log.Println("[I][app] Waiting for signals")
 	a.waitForSignals()
-	log.Println("Info: [app] Started")
+	log.Println("[I][app] Started")
 	return nil
 }
 
 // Stop shuts down the server: hookbot > build > web.
 func (a *App) Stop() error {
-	log.Println("Info: [app] Stopping")
+	log.Println("[I][app] Stopping")
 
 	if a.Hookbot != nil {
-		log.Println("Info: [app] Stopping hookbot subscriber")
+		log.Println("[I][app] Stopping hookbot subscriber")
 		a.Hookbot.Stop()
 	}
 
 	if a.Builds != nil {
-		log.Println("Info: [app] Closing build queue")
+		log.Println("[I][app] Closing build queue")
 		a.Builds.doneCh <- struct{}{}
 	}
 
 	if a.WebServer != nil {
-		log.Println("Info: [app] Stopping web server")
+		log.Println("[I][app] Stopping web server")
 		if err := a.WebServer.Stop(); err != nil {
-			log.Printf("Error: [app] Failed to stop web server: %v", err)
+			log.Printf("[E][app] Failed to stop web server: %v", err)
 			return err
 		}
 	}
 
-	log.Println("Info: [app] Stopped")
+	log.Println("[I][app] Stopped")
 	return nil
 }
 
@@ -115,7 +115,7 @@ func waitForBuilds(builds *BuildQueue) {
 		select {
 		case b, _ := <-builds.BuildCh:
 			if err := b.Job.Execute(b.Source); err != nil {
-				log.Printf("Error: [app] Build failed: %v", err)
+				log.Printf("[E][app] Build failed: %v", err)
 			}
 		case <-builds.doneCh:
 			return
@@ -147,14 +147,14 @@ func (a *App) waitForSignals() {
 }
 
 func (a *App) reload() {
-	log.Println("Info: [app] Reloading")
+	log.Println("[I][app] Reloading")
 	// TODO(uwe): Do reloading
 }
 
 func (a *App) printStats() {
 	stats := a.stats()
 	for k, v := range stats {
-		log.Printf("Info: [app] Stats %s: %v", k, v)
+		log.Printf("[I][app] Stats %s: %v", k, v)
 	}
 }
 

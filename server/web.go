@@ -77,7 +77,7 @@ func (srv *Server) Start() error {
 	srv.Listener = ln
 
 	go func() {
-		log.Printf("Error: [web] Socket closed: %v", srv.Serve(ln))
+		log.Printf("[E][web] Socket closed: %v", srv.Serve(ln))
 	}()
 
 	return nil
@@ -144,14 +144,14 @@ func webhookHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 
 	s, err := sourceFromRequest(req, c)
 	if err != nil {
-		log.Printf("Error: [web] Invalid github webhook push event: %v", err)
+		log.Printf("[E][web] Invalid github webhook push event: %v", err)
 		sendHTTPError(w, err)
 		return
 	}
 
 	m, err := manifestFromSource(s, c)
 	if err != nil {
-		log.Printf("Error: [web] Failed to find valid remote manifest: %v", err)
+		log.Printf("[E][web] Failed to find valid remote manifest: %v", err)
 		sendHTTPError(w, err)
 		return
 	}
