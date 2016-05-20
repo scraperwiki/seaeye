@@ -32,6 +32,7 @@ type Server struct {
 type Context struct {
 	config *Config
 	builds chan *Build
+	stats  func() Stats
 }
 
 // CtxHandlerFunc defines a http.FuncHandler with context.
@@ -45,13 +46,15 @@ type httpError struct {
 // NewWebServer initializes a new HTTP server. The difference to a standard
 // net.http server is that it knows about the listener and can stop itself
 // gracefully.
-func NewWebServer(conf *Config, builds chan *Build) *Server {
+func NewWebServer(conf *Config, builds chan *Build, stats func() Stats) *Server {
 	ctx := &Context{
 		config: conf,
 		builds: builds,
+		stats:  stats,
 	}
 
 	router := mux.NewRouter()
+	router.Path("/health").Methods("GET").HandlerFunc(wrap(ctx, healthHandler))
 	router.Path("/jobs/{id}/status/{rev}").Methods("GET").HandlerFunc(wrap(ctx, statusJobHandler))
 	router.Path("/webhook").Methods("PUT", "POST").HandlerFunc(wrap(ctx, webhookHandler))
 
@@ -116,6 +119,13 @@ func (srv *Server) connStateHook() func(net.Conn, http.ConnState) {
 func wrap(ctx *Context, handler CtxHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
 		handler(ctx, w, req)
+	}
+}
+
+func healthHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
+	stats := ctx.stats()
+	for k, v := range stats {
+		fmt.Fprintf(w, "%s: %v", k, v)
 	}
 }
 

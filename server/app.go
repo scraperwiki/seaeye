@@ -32,6 +32,9 @@ type Build struct {
 	Source *Source
 }
 
+// Stats contains statistics about the application.
+type Stats map[string]interface{}
+
 // Start starts the server: web > build > hookbot > signals.
 func (a *App) Start() error {
 	log.Println("Info: [app] Starting")
@@ -41,7 +44,7 @@ func (a *App) Start() error {
 
 	if a.WebServer == nil {
 		log.Println("Info: [app] Creating web server")
-		a.WebServer = NewWebServer(a.Config, a.Builds.BuildCh)
+		a.WebServer = NewWebServer(a.Config, a.Builds.BuildCh, a.stats)
 	}
 	log.Printf("Info: [app] Starting web server %s", a.WebServer.Addr)
 	if err := a.WebServer.Start(); err != nil {
@@ -149,8 +152,18 @@ func (a *App) reload() {
 }
 
 func (a *App) printStats() {
-	log.Printf("Info: [app] Stats /app/start_time: %v", a.startTime)
-	log.Printf("Info: [app] Stats /app/uptime: %v", time.Now().Sub(a.startTime))
-	log.Printf("Info: [app] Stats /app/build_queue/count: %v", len(a.Builds.BuildCh))
-	log.Printf("Info: [app] Stats /server/active_connections: %v", a.WebServer.ConnActive)
+	stats := a.stats()
+	for k, v := range stats {
+		log.Printf("Info: [app] Stats %s: %v", k, v)
+	}
+}
+
+func (a *App) stats() Stats {
+	return map[string]interface{}{
+		"/app/build_queue/count":        len(a.Builds.BuildCh),
+		"/app/start_time":               a.startTime,
+		"/app/uptime":                   time.Now().Sub(a.startTime),
+		"/app/version":                  a.Config.Version,
+		"/webserver/active_connections": a.WebServer.ConnActive,
+	}
 }
