@@ -47,11 +47,12 @@ COPY cmd /go/src/github.com/scraperwiki/seaeye/cmd
 COPY pkg /go/src/github.com/scraperwiki/seaeye/pkg
 RUN go install -v github.com/scraperwiki/seaeye/cmd/seaeye
 RUN set -x  \
- && mkdir -p /seaeye/logs /seaeye/workspace \
+ && mkdir -p /seaeye/logs /seaeye/ssh /seaeye/workspace \
  && chown -R nobody:nogroup /seaeye
+COPY buildfiles/entrypoint /seaeye/entrypoint
 WORKDIR /seaeye
 
-VOLUME /seaeye/logs /seaeye/workspace
+VOLUME /seaeye/logs /seaeye/ssh /seaeye/workspace
 USER nobody:nogroup
 EXPOSE 19515
-ENTRYPOINT ["seaeye"]
+ENTRYPOINT ["/seaeye/entrypoint"]

@@ -11,6 +11,7 @@ run: build
 		-p 19515:19515 \
 		--env-file=seaeye.env \
 		-v $(CURDIR)/logs:/seaeye/logs \
+		-v $(CURDIR)/ssh:/seaeye/ssh \
 		-v $(CURDIR)/workspace:/seaeye/workspace \
 		seaeye
 

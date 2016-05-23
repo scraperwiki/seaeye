@@ -1,5 +1,6 @@
 dist/
 logs/
+ssh/
 workspace/
 seaeye
 .seaeye.yml
