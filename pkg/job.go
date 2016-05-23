@@ -12,9 +12,9 @@ import (
 
 const (
 	// LogBaseDir defines the base directory to log files.
-	logBaseDir = "log"
+	logBaseDir = "logs"
 	// FetchBaseDir defines the base directory to any fetched source files.
-	fetchBaseDir = "src"
+	fetchBaseDir = "workspace"
 )
 
 // Job is responsible for an describes all necessary modules to execute a job.

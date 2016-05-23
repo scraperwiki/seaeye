@@ -1,5 +1,5 @@
 dist/
-log/
-src/
+logs/
+workspace/
 seaeye
 .seaeye.yml

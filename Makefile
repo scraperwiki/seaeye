@@ -10,6 +10,8 @@ run: build
 	docker run --rm -it \
 		-p 19515:19515 \
 		--env-file=seaeye.env \
+		-v $(CURDIR)/logs:/seaeye/logs \
+		-v $(CURDIR)/workspace:/seaeye/workspace \
 		seaeye
 
 .PHONY: build run sm
