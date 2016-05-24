@@ -35,21 +35,11 @@ type Build struct {
 // Stats contains statistics about the application.
 type Stats map[string]interface{}
 
-// Start starts the server: web > build > hookbot > signals.
+// Start starts the server: build > web > hookbot > signals.
 func (a *App) Start() error {
 	log.Println("[I][app] Starting")
 	if a.startTime.IsZero() {
 		a.startTime = time.Now()
-	}
-
-	if a.WebServer == nil {
-		log.Println("[I][app] Creating web server")
-		a.WebServer = NewWebServer(a.Config, a.Builds.BuildCh, a.stats)
-	}
-	log.Printf("[I][app] Starting web server %s", a.WebServer.Addr)
-	if err := a.WebServer.Start(); err != nil {
-		log.Printf("[E][app] Failed to start web server: %v", err)
-		return err
 	}
 
 	if a.Builds == nil {
@@ -61,6 +51,16 @@ func (a *App) Start() error {
 	}
 	log.Printf("[I][app] Waiting for builds: %d", cap(a.Builds.BuildCh))
 	go waitForBuilds(a.Builds)
+
+	if a.WebServer == nil {
+		log.Println("[I][app] Creating web server")
+		a.WebServer = NewWebServer(a.Config, a.Builds.BuildCh, a.stats)
+	}
+	log.Printf("[I][app] Starting web server %s", a.WebServer.Addr)
+	if err := a.WebServer.Start(); err != nil {
+		log.Printf("[E][app] Failed to start web server: %v", err)
+		return err
+	}
 
 	if a.Hookbot == nil {
 		log.Println("[I][app] Creating hookbot subscriber")
@@ -82,7 +82,7 @@ func (a *App) Start() error {
 	return nil
 }
 
-// Stop shuts down the server: hookbot > build > web.
+// Stop shuts down the server: hookbot > web > build.
 func (a *App) Stop() error {
 	log.Println("[I][app] Stopping")
 
@@ -91,17 +91,17 @@ func (a *App) Stop() error {
 		a.Hookbot.Stop()
 	}
 
-	if a.Builds != nil {
-		log.Println("[I][app] Closing build queue")
-		a.Builds.doneCh <- struct{}{}
-	}
-
 	if a.WebServer != nil {
 		log.Println("[I][app] Stopping web server")
 		if err := a.WebServer.Stop(); err != nil {
 			log.Printf("[E][app] Failed to stop web server: %v", err)
 			return err
 		}
+	}
+
+	if a.Builds != nil {
+		log.Println("[I][app] Closing build queue")
+		a.Builds.doneCh <- struct{}{}
 	}
 
 	log.Println("[I][app] Stopped")
