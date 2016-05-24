@@ -42,7 +42,7 @@ ENV HOME=/home/nobody
 
 ## Configure seaeye (install vendor first for docker container caching)
 COPY vendor /go/src/github.com/scraperwiki/seaeye/vendor
-RUN go install -v github.com/scraperwiki/seaeye/vendor/...
+RUN go install -v $(cat /go/src/github.com/scraperwiki/seaeye/vendor/dependencies)
 COPY cmd /go/src/github.com/scraperwiki/seaeye/cmd
 COPY pkg /go/src/github.com/scraperwiki/seaeye/pkg
 RUN go install -v github.com/scraperwiki/seaeye/cmd/seaeye
