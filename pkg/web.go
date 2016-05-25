@@ -228,7 +228,7 @@ func manifestFromSource(s *Source, c *OAuthGithubClient) (*Manifest, error) {
 }
 
 func sendHTTPError(w http.ResponseWriter, err error) {
-	if httpErr, ok := err.(httpError); ok {
+	if httpErr, ok := err.(*httpError); ok {
 		http.Error(w, httpErr.Error(), httpErr.Status)
 	} else {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
