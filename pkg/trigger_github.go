@@ -26,6 +26,9 @@ func (g *GithubTrigger) Post(url string, e *github.PushEvent) error {
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader(b))
+	if err != nil {
+		return fmt.Errorf("failed to prepare request: %v", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "Seaeye-Hookbot-Proxy")
 	req.Header.Set("X-GitHub-Event", "push")

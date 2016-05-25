@@ -89,12 +89,17 @@ func (h *HookbotTrigger) msgHandler(msgCh <-chan []byte) {
 		sshURL := fmt.Sprintf("git@github.com:%s.git", event.Repo)
 
 		// Convert Hookbot subscription event back to Github WebHook Push event.
-		var e github.PushEvent
-		e.After = &event.SHA
-		e.Pusher.Name = &event.Who
-		e.Repo.FullName = &event.Repo
-		e.Repo.URL = &sshURL
-		e.Ref = &ref
+		e := github.PushEvent{
+			After: &event.SHA,
+			Pusher: &github.User{
+				Name: &event.Who,
+			},
+			Repo: &github.PushEventRepository{
+				FullName: &event.Repo,
+				URL:      &sshURL,
+			},
+			Ref: &ref,
+		}
 
 		if h.Hook == nil {
 			log.Printf("[W][trigger_hookbot] No hook defined for: %v", e)

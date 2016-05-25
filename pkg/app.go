@@ -55,7 +55,7 @@ func (a *App) Start() error {
 			Endpoint: a.Config.HookbotEndpoint,
 			Hook: func(event *github.PushEvent) error {
 				g := &GithubTrigger{}
-				url := a.Config.HostPort + "/webhook"
+				url := a.Config.BaseURL + "/webhook"
 				return g.Post(url, event)
 			},
 		}
