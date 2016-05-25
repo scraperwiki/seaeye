@@ -45,7 +45,7 @@ COPY vendor /go/src/github.com/scraperwiki/seaeye/vendor
 RUN go install -v $(cat /go/src/github.com/scraperwiki/seaeye/vendor/dependencies)
 COPY cmd /go/src/github.com/scraperwiki/seaeye/cmd
 COPY pkg /go/src/github.com/scraperwiki/seaeye/pkg
-RUN go install -v github.com/scraperwiki/seaeye/cmd/seaeye
+RUN go install -v -ldflags "-X main.version=$SEAEYE_VERSION" github.com/scraperwiki/seaeye/cmd/seaeye
 RUN set -x  \
  && mkdir -p /seaeye/logs /seaeye/ssh /seaeye/workspace \
  && chown -R nobody:nogroup /seaeye

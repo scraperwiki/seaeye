@@ -1,4 +1,4 @@
-VERSION?=$(shell git describe --tags --always --dirty)
+SEAEYE_VERSION?=$(shell git describe --tags --always --dirty)
 
 sm:
 	git submodule update --init --recursive
