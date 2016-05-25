@@ -41,6 +41,8 @@ RUN set -x \
 ENV HOME=/home/nobody
 
 ## Configure seaeye (install vendor first for docker container caching)
+COPY buildfiles/known_hosts /etc/ssh/ssh_known_hosts
+COPY buildfiles/entrypoint /seaeye/entrypoint
 COPY vendor /go/src/github.com/scraperwiki/seaeye/vendor
 RUN go install -v $(cat /go/src/github.com/scraperwiki/seaeye/vendor/dependencies)
 COPY cmd /go/src/github.com/scraperwiki/seaeye/cmd
@@ -49,10 +51,7 @@ RUN go install -v -ldflags "-X main.version=$SEAEYE_VERSION" github.com/scraperw
 RUN set -x  \
  && mkdir -p /seaeye/logs /seaeye/ssh /seaeye/workspace \
  && chown -R nobody:nogroup /seaeye
-COPY buildfiles/entrypoint /seaeye/entrypoint
 WORKDIR /seaeye
-
-COPY buildfiles/known_hosts /etc/ssh/ssh_known_hosts
 
 VOLUME /seaeye/logs /seaeye/ssh /seaeye/workspace
 USER nobody:nogroup
