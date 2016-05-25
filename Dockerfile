@@ -35,8 +35,7 @@ RUN echo 'nobody ALL=(ALL) NOPASSWD:SETENV: /usr/local/bin/docker, /usr/bin/dock
 
 ## Configure nobody user
 RUN set -x \
- && mkdir -p /home/nobody/.ssh \
- && ssh-keyscan github.com >> /home/nobody/.ssh/known_hosts \
+ && mkdir -p /home/nobody \
  && chown -R nobody:nogroup /home/nobody
 ENV HOME=/home/nobody
 
@@ -51,6 +50,8 @@ RUN set -x  \
  && chown -R nobody:nogroup /seaeye
 COPY buildfiles/entrypoint /seaeye/entrypoint
 WORKDIR /seaeye
+
+COPY buildfiles/known_hosts /etc/ssh/ssh_known_hosts
 
 VOLUME /seaeye/logs /seaeye/ssh /seaeye/workspace
 USER nobody:nogroup
