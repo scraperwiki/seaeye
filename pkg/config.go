@@ -41,7 +41,6 @@ func NewConfig() *Config {
 }
 
 func getenvOr(k, fallback string) string {
-	// if v, ok := os.LookupEnv("k"); ok {
 	if v := os.Getenv("k"); v != "" {
 		return v
 	}
