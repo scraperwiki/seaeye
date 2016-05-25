@@ -131,7 +131,7 @@ func indexHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 func healthHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 	stats := ctx.stats()
 	for k, v := range stats {
-		fmt.Fprintf(w, "%s: %v", k, v)
+		fmt.Fprintf(w, "%s=%v\n", k, v)
 	}
 }
 
