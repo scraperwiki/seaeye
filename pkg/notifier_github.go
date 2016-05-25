@@ -16,7 +16,7 @@ type GithubNotifier struct {
 // Notify notifies a Github repository about status updates. State is required,
 // desc is optional.
 func (g *GithubNotifier) Notify(state, desc string) error {
-	context := "ci" // "seaeye"
+	context := "seaeye" // "ci"
 	s := &github.RepoStatus{
 		Context:     &context,
 		Description: &desc,
