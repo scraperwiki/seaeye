@@ -94,7 +94,7 @@ func (srv *Server) Stop() error {
 		return err
 	}
 
-	// Drain active connections with grace period
+	// Drain active connections with grace period of 10s.
 	for t := 100; t > 0 && srv.ConnActive > 0; t-- {
 		time.Sleep(100 * time.Millisecond)
 	}
