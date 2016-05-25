@@ -43,9 +43,9 @@ ENV HOME=/home/nobody
 ## Configure environment
 COPY buildfiles/known_hosts /etc/ssh/ssh_known_hosts
 USER nobody:nogroup
-COPY buildfiles/entrypoint /seaeye/entrypoint
+COPY buildfiles/entrypoint.sh /seaeye/entrypoint.sh
+ENTRYPOINT ["/seaeye/entrypoint.sh"]
 EXPOSE 19515
-ENTRYPOINT ["/seaeye/entrypoint"]
 WORKDIR /seaeye
 VOLUME /seaeye/logs /seaeye/ssh /seaeye/workspace
 
