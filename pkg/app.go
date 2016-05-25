@@ -19,19 +19,6 @@ type App struct {
 	startTime time.Time
 }
 
-// BuildQueue specifies a sequential queue of pending builds.
-type BuildQueue struct {
-	BuildCh chan *Build
-	doneCh  chan struct{}
-}
-
-// Build specifies a specific build for a job given a github push event as
-// parameter.
-type Build struct {
-	Job    *Job
-	Source *Source
-}
-
 // Stats contains statistics about the application.
 type Stats map[string]interface{}
 
@@ -111,21 +98,6 @@ func (a *App) Stop() error {
 
 // WaitForSignals listens looping for syscall signals until SIGINT or SIGTERM is
 // provided.
-// waitForBuilds sequentially executes builds by applying a push webhook to a
-// job.
-func waitForBuilds(builds *BuildQueue) {
-	for {
-		select {
-		case b, _ := <-builds.BuildCh:
-			if err := b.Job.Execute(b.Source); err != nil {
-				log.Printf("[E][app] Build failed: %v", err)
-			}
-		case <-builds.doneCh:
-			return
-		}
-	}
-}
-
 func (a *App) WaitForSignals() {
 	log.Println("[I][app] Waiting for signals")
 	sigc := make(chan os.Signal, 6)
