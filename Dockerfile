@@ -25,7 +25,7 @@ RUN set -x \
  && rm docker.tgz
 
 ## Install Docker Compose
-RUN pip install --upgrade pip docker-compose
+RUN pip install --upgrade docker-compose
 
 ## Allow run docker commands against daemon without having to prefix docker with
 ## `sudo` by giving a docker proxy script sudo rights.
