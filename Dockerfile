@@ -12,7 +12,8 @@ RUN set -x \
     perl \
     py-pip \
     sudo \
- && rm -rf /var/cache/apk/* /tmp/*
+ && rm -rf /var/cache/apk/* /tmp/* \
+ && pip install --upgrade pip
 
 ## Install Docker
 ## See: https://github.com/docker-library/docker/blob/f7ee50684c7ec92ce885c8b93a4ed22ddbb660f8/1.11/Dockerfile
