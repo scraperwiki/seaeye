@@ -74,7 +74,10 @@ func (a *App) Start() error {
 		}
 	}
 	log.Printf("[I][app] Starting hookbot subscriber: %s", a.Config.HookbotEndpoint)
-	a.Hookbot.Start()
+	if err := a.Hookbot.Start(); err != nil {
+		log.Printf("[E][app] Failed to start hookbot subscriber: %v", err)
+		return err
+	}
 
 	log.Println("[I][app] Started")
 	return nil
