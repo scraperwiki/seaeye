@@ -76,8 +76,6 @@ func (a *App) Start() error {
 	log.Printf("[I][app] Starting hookbot subscriber: %s", a.Config.HookbotEndpoint)
 	a.Hookbot.Start()
 
-	log.Println("[I][app] Waiting for signals")
-	a.waitForSignals()
 	log.Println("[I][app] Started")
 	return nil
 }
@@ -108,6 +106,8 @@ func (a *App) Stop() error {
 	return nil
 }
 
+// WaitForSignals listens looping for syscall signals until SIGINT or SIGTERM is
+// provided.
 // waitForBuilds sequentially executes builds by applying a push webhook to a
 // job.
 func waitForBuilds(builds *BuildQueue) {
@@ -123,7 +123,8 @@ func waitForBuilds(builds *BuildQueue) {
 	}
 }
 
-func (a *App) waitForSignals() {
+func (a *App) WaitForSignals() {
+	log.Println("[I][app] Waiting for signals")
 	sigc := make(chan os.Signal, 6)
 	signal.Notify(sigc,
 		syscall.SIGUSR1, // syscall.SIGINFO,

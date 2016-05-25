@@ -41,9 +41,13 @@ func mainCmd() {
 	if err := a.Start(); err != nil {
 		os.Exit(1)
 	}
+	log.Println("[I][cmd] Started")
+
+	a.WaitForSignals()
 
 	log.Println("[I][cmd] Stopping")
 	if err := a.Stop(); err != nil {
 		os.Exit(1)
 	}
+	log.Println("[I][cmd] Stopped")
 }
