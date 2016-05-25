@@ -10,7 +10,7 @@ as an adequate primer.
 ## Overview
 
 A simple continuous integration server using
-[hookbot](https://github.com/scraperwiki/hookbot) to subscribe to branch changes
+[Hookbot](https://github.com/scraperwiki/hookbot) to subscribe to branch changes
 on Github hosted repositories.
 
 Assumptions:
