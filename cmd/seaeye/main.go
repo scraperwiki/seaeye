@@ -11,6 +11,12 @@ import (
 
 var version string
 
+func init() {
+	if version == "" {
+		version = os.Getenv("HANOVERD_IMAGE_TAGDIGEST")
+	}
+}
+
 func main() {
 	var versionFlag bool
 
