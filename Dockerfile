@@ -36,18 +36,17 @@ RUN echo 'nobody ALL=(ALL) NOPASSWD:SETENV: /usr/local/bin/docker, /usr/bin/dock
 
 ## Configure nobody user
 RUN set -x \
- && mkdir -p /home/nobody /seaeye/logs /seaeye/ssh /seaeye/workspace \
+ && mkdir -p /home/nobody /seaeye/logs /seaeye/workspace \
  && chown -R nobody:nogroup /home/nobody /seaeye
 ENV HOME=/home/nobody
 
 ## Configure environment
 COPY buildfiles/known_hosts /etc/ssh/ssh_known_hosts
 USER nobody:nogroup
-COPY buildfiles/entrypoint.sh /seaeye/entrypoint.sh
-ENTRYPOINT ["/seaeye/entrypoint.sh"]
+ENTRYPOINT ["seaeye"]
 EXPOSE 19515
 WORKDIR /seaeye
-VOLUME /seaeye/logs /seaeye/ssh /seaeye/workspace
+VOLUME /seaeye/logs /seaeye/workspace
 
 ## Configure seaeye (install vendor first for docker container caching)
 COPY vendor /go/src/github.com/scraperwiki/seaeye/vendor
