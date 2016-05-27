@@ -38,6 +38,8 @@ func main() {
 }
 
 func mainCmd() {
+	log.SetPrefix("seaeye ")
+
 	config := seaeye.NewConfig()
 	config.Version = version
 
