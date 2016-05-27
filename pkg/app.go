@@ -102,13 +102,13 @@ func (a *App) WaitForSignals() {
 	log.Println("[I][app] Waiting for signals")
 	sigc := make(chan os.Signal, 6)
 	signal.Notify(sigc,
-		syscall.SIGUSR1, // syscall.SIGINFO,
+		syscall.SIGUSR1, // syscall.SIGINFO, // BSD only
 		syscall.SIGHUP, syscall.SIGUSR2,
 		syscall.SIGINT, syscall.SIGTERM,
 	)
 	for sig := range sigc {
 		switch sig {
-		case // syscall.SIGINFO, // Ctrl-t // BSD only
+		case // syscall.SIGINFO, // Ctrl-t
 			syscall.SIGUSR1:
 			a.printStats()
 		case syscall.SIGHUP,
