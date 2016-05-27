@@ -51,7 +51,8 @@ func (j *Job) setup(s *Source) error {
 
 	if j.Logger == nil {
 		logFilePath := LogFilePath(j.ID, s.Rev)
-		logger, err := NewFileLogger(logFilePath, j.ID+" ", log.LstdFlags)
+		prefix := log.Prefix() + j.ID + " "
+		logger, err := NewFileLogger(logFilePath, prefix, log.LstdFlags)
 		if err != nil {
 			return err
 		}
