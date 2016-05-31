@@ -3,7 +3,6 @@ package seaeye
 import (
 	"fmt"
 	"log"
-	"net/url"
 	"os"
 	"os/exec"
 	"path"
@@ -46,7 +45,7 @@ func (j *Job) Execute(s *Source) error {
 // Setup ensures that all relevant job parts are configured and instatiated.
 func (j *Job) setup(s *Source) error {
 	if j.ID == "" {
-		j.ID = url.QueryEscape(path.Join(s.Owner, s.Repo))
+		j.ID = sanitizePath(path.Join(s.Owner, s.Repo))
 	}
 
 	if j.Logger == nil {
@@ -73,7 +72,7 @@ func (j *Job) setup(s *Source) error {
 
 	if j.Notifier == nil {
 		c := NewOAuthGithubClient(j.Config.GithubToken)
-		t := j.Config.BaseURL + fmt.Sprintf("/jobs/%s/status/%s", j.ID, s.Rev)
+		t := j.Config.BaseURL + fmt.Sprintf("/jobs/%s/status/%s", j.ID, sanitizePath(s.Rev))
 		n := &GithubNotifier{
 			Client:    c,
 			Source:    s,
@@ -171,9 +170,13 @@ func (j *Job) Test(m *Manifest, wd string) error {
 
 // LogFilePath assembles a log file path from a job id and revision.
 func LogFilePath(jobID, rev string) string {
-	saneID := strings.Replace(jobID, "/", "_", -1) // e.g.: scraperwiki/foo
-	saneRev := strings.Replace(rev, "/", "_", -1)  // e.g.: refs/origin/master
+	saneID := sanitizePath(jobID) // e.g.: scraperwiki/foo
+	saneRev := sanitizePath(rev)  // e.g.: refs/origin/master
 	return path.Join(logBaseDir, saneID, saneRev, "log.txt")
+}
+
+func sanitizePath(path string) string {
+	return strings.Replace(strings.Replace(path, "/", "_", -1), ":", "_", -1)
 }
 
 func dockerWd(wd string) (string, error) {

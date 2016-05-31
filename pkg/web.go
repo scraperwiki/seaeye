@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -148,8 +147,8 @@ func webhookHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 
 func statusJobHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
-	id := url.QueryEscape(vars["id"])
-	rev := url.QueryEscape(vars["rev"])
+	id := vars["id"]
+	rev := vars["rev"]
 
 	logFilePath := LogFilePath(id, rev)
 	http.ServeFile(w, req, logFilePath)
