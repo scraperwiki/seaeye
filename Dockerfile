@@ -4,6 +4,7 @@ MAINTAINER Uwe Dauernheim <uwe@scraperwiki.com>
 ## Install runtime and build dependencies
 RUN set -x \
  && apk add --no-cache \
+    bash \
     ca-certificates \
     curl \
     git \
