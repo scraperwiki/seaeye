@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -50,7 +51,10 @@ func (j *Job) setup(s *Source) error {
 	}
 
 	if j.Logger == nil {
-		logFilePath := LogFilePath(j.ID, s.Rev)
+		logFilePath, err := filepath.Abs(LogFilePath(j.ID, s.Rev))
+		if err != nil {
+			return err
+		}
 		prefix := log.Prefix() + j.ID + " "
 		logger, err := NewFileLogger(logFilePath, prefix, log.LstdFlags)
 		if err != nil {
