@@ -31,7 +31,7 @@ func NewOAuthGithubClient(token string) *OAuthGithubClient {
 
 // PushEventFromRequest parses the body of a POST request and returns a
 // (minimal) Github API v3 push event.
-func (c *OAuthGithubClient) PushEventFromRequest(req *http.Request) (*github.PushEvent, error) {
+func PushEventFromRequest(req *http.Request) (*github.PushEvent, error) {
 	contentTypeHeader := req.Header.Get("Content-Type")
 	contentType, _, _ := mime.ParseMediaType(contentTypeHeader)
 	if contentType != "application/json" && contentType != "application/x-www-form-urlencoded" {

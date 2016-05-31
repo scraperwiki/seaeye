@@ -24,7 +24,6 @@ type Job struct {
 	Fetcher  *GithubFetcher  // ...to clone git repo.
 	ID       string          // ...to identify for logs.
 	Logger   *FileLogger     // ...to accessed persistent and durable logs via REST endpoint.
-	Manifest *Manifest       // ...to provide envvars and test instructions.
 	Notifier *GithubNotifier // ...to update commmit statuses.
 }
 
@@ -116,9 +115,16 @@ func (j *Job) run() error {
 	// Defer Cleanup
 	//defer j.Fetcher.Cleanup()
 
+	// Look for manifest
+	m, err := FindManifest(j.Fetcher.CheckoutDir())
+	if err != nil {
+		log.Printf("[E][executor] Failed to find valid manifest: %v", err)
+		return err
+	}
+
 	// Test
 	j.Logger.Printf("[I][executor] Testing started")
-	if err := j.Test(j.Fetcher.CheckoutDir()); err != nil {
+	if err := j.Test(m, j.Fetcher.CheckoutDir()); err != nil {
 		j.Logger.Printf("[E][executor] Testing failed: %v", err)
 		if _, ok := err.(*exec.ExitError); ok {
 			_ = j.Notifier.Notify("failure", "Stage Testing failed")
@@ -135,7 +141,7 @@ func (j *Job) run() error {
 }
 
 // Test runs the tests defined in the manifest.
-func (j *Job) Test(wd string) error {
+func (j *Job) Test(m *Manifest, wd string) error {
 	dockerWd, err := dockerWd(wd)
 	if err != nil {
 		return err
@@ -145,9 +151,9 @@ func (j *Job) Test(wd string) error {
 	_ = os.Setenv("WORKSPACE", wd)
 	_ = os.Setenv("DOCKER_WORKSPACE", dockerWd)
 
-	env := prepareEnv(j.Manifest.Environment)
+	env := prepareEnv(m.Environment)
 
-	for _, line := range j.Manifest.Test {
+	for _, line := range m.Test {
 		cmd := exec.Command(line[0], line[1:]...)
 		cmd.Dir = wd
 		cmd.Env = env

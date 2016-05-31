@@ -4,19 +4,14 @@ package seaeye
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
-	"path"
 	"strings"
 	"sync"
 	"time"
 
-	"gopkg.in/yaml.v2"
-
-	"github.com/google/go-github/github"
 	"github.com/gorilla/mux"
 )
 
@@ -140,23 +135,14 @@ func loginHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 }
 
 func webhookHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
-	c := NewOAuthGithubClient(ctx.config.GithubToken)
-
-	s, err := sourceFromRequest(req, c)
+	s, err := sourceFromRequest(req)
 	if err != nil {
 		log.Printf("[E][web] Invalid github webhook push event: %v", err)
 		sendHTTPError(w, err)
 		return
 	}
 
-	m, err := manifestFromSource(s, c)
-	if err != nil {
-		log.Printf("[E][web] Failed to find valid remote manifest: %v", err)
-		sendHTTPError(w, err)
-		return
-	}
-
-	j := &Job{Config: ctx.config, Manifest: m}
+	j := &Job{Config: ctx.config}
 	ctx.builds <- &Build{Job: j, Source: s}
 }
 
@@ -169,8 +155,8 @@ func statusJobHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 	http.ServeFile(w, req, logFilePath)
 }
 
-func sourceFromRequest(req *http.Request, c *OAuthGithubClient) (*Source, error) {
-	e, err := c.PushEventFromRequest(req)
+func sourceFromRequest(req *http.Request) (*Source, error) {
+	e, err := PushEventFromRequest(req)
 	if err != nil {
 		err := fmt.Errorf("failed to parse: %v", err)
 		return nil, &httpError{error: err, Status: http.StatusBadRequest}
@@ -195,36 +181,6 @@ func sourceFromRequest(req *http.Request, c *OAuthGithubClient) (*Source, error)
 		URL:   *e.Repo.URL,
 	}
 	return s, nil
-}
-
-func manifestFromSource(s *Source, c *OAuthGithubClient) (*Manifest, error) {
-	opt := &github.RepositoryContentGetOptions{Ref: s.Rev}
-	r, err := c.Repositories.DownloadContents(s.Owner, s.Repo, ".seaeye.yml", opt)
-	if err != nil {
-		return nil, &httpError{error: err, Status: http.StatusPreconditionRequired}
-	}
-	defer r.Close()
-
-	b, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, &httpError{error: err, Status: http.StatusPreconditionRequired}
-	}
-
-	m := &Manifest{}
-	if err := yaml.Unmarshal(b, m); err != nil {
-		return nil, &httpError{error: err, Status: http.StatusPreconditionRequired}
-	}
-
-	if m.ID == "" {
-		// Ensure we have an ID so the user can find logs for this manifest's job.
-		m.ID = url.QueryEscape(path.Join(s.Owner, s.Repo))
-	}
-
-	if err := m.Validate(); err != nil {
-		return nil, &httpError{error: err, Status: http.StatusPreconditionRequired}
-	}
-
-	return m, nil
 }
 
 func sendHTTPError(w http.ResponseWriter, err error) {
