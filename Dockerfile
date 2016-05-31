@@ -36,6 +36,7 @@ RUN echo 'nobody ALL=(ALL) NOPASSWD:SETENV: /usr/local/bin/docker, /usr/bin/dock
 
 ## Configure nobody user
 COPY buildfiles/config /home/nobody/.ssh/config
+COPY buildfiles/known_hosts /home/nobody/.ssh/known_hosts
 RUN set -x \
  && sed -i 's#nobody:x:65534:65534:nobody:/:/sbin/nologin#nobody:x:65534:65534:nobody:/home/nobody:/sbin/nologin#' /etc/passwd \
  && mkdir -p /home/nobody /seaeye/logs /seaeye/workspace \
