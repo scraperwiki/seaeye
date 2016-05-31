@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/scraperwiki/seaeye/pkg"
+	"github.com/scraperwiki/seaeye/pkg/seaeye"
 )
 
 var version string
