@@ -195,7 +195,9 @@ func prepareEnv(manifestEnv []string) (env []string) {
 	envs := append(os.Environ(), manifestEnv...)
 
 	for _, e := range envs {
+		if !strings.HasPrefix(e, "SEAEYE_") {
 			env = append(env, e)
+		}
 	}
 	return
 }
