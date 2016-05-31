@@ -136,8 +136,14 @@ func (j *Job) run() error {
 
 // Test runs the tests defined in the manifest.
 func (j *Job) Test(wd string) error {
+	dockerWd, err := dockerWd(wd)
+	if err != nil {
+		return err
+	}
+
 	// Set build-specific environment variables
 	_ = os.Setenv("WORKSPACE", wd)
+	_ = os.Setenv("DOCKER_WORKSPACE", dockerWd)
 
 	env := prepareEnv(j.Manifest.Environment)
 
@@ -162,6 +168,27 @@ func LogFilePath(jobID, rev string) string {
 	saneID := strings.Replace(jobID, "/", "_", -1) // e.g.: scraperwiki/foo
 	saneRev := strings.Replace(rev, "/", "_", -1)  // e.g.: refs/origin/master
 	return path.Join(logBaseDir, saneID, saneRev, "log.txt")
+}
+
+func dockerWd(wd string) (string, error) {
+	wdOutside, errO := filepath.Abs(os.Getenv("SEAEYE_WORKSPACE"))
+	if errO != nil {
+		return "", errO
+	}
+
+	wdInside, errI := filepath.Abs(fetchBaseDir)
+	if errI != nil {
+		return "", errI
+	}
+
+	if wdOutside == "/" {
+		return wdInside, nil
+	} else if !strings.HasSuffix(wdOutside, wdInside) {
+		return "", fmt.Errorf("non-suffix outside workdirectory")
+	}
+
+	dockerWd := path.Join(strings.TrimSuffix(wdOutside, wdInside), wd)
+	return dockerWd, nil
 }
 
 func prepareEnv(manifestEnv []string) (env []string) {
