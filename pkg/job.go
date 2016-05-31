@@ -136,10 +136,15 @@ func (j *Job) run() error {
 
 // Test runs the tests defined in the manifest.
 func (j *Job) Test(wd string) error {
+	// Set build-specific environment variables
+	_ = os.Setenv("WORKSPACE", wd)
+
+	env := prepareEnv(j.Manifest.Environment)
+
 	for _, line := range j.Manifest.Test {
 		cmd := exec.Command(line[0], line[1:]...)
 		cmd.Dir = wd
-		cmd.Env = append(os.Environ(), j.Manifest.Environment...)
+		cmd.Env = env
 		cmd.Stdout = j.Logger.outFile
 		cmd.Stderr = j.Logger.outFile
 
@@ -157,4 +162,13 @@ func LogFilePath(jobID, rev string) string {
 	saneID := strings.Replace(jobID, "/", "_", -1) // e.g.: scraperwiki/foo
 	saneRev := strings.Replace(rev, "/", "_", -1)  // e.g.: refs/origin/master
 	return path.Join(logBaseDir, saneID, saneRev, "log.txt")
+}
+
+func prepareEnv(manifestEnv []string) (env []string) {
+	envs := append(os.Environ(), manifestEnv...)
+
+	for _, e := range envs {
+			env = append(env, e)
+	}
+	return
 }
