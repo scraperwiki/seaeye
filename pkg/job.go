@@ -108,7 +108,9 @@ func (j *Job) run() error {
 		return err
 	}
 	j.Logger.Printf("[I][executor] Fetching succeeded")
-	defer j.Fetcher.Cleanup()
+
+	// Defer Cleanup
+	//defer j.Fetcher.Cleanup()
 
 	// Test
 	j.Logger.Printf("[I][executor] Testing started")
