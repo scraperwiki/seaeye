@@ -64,8 +64,9 @@ func (j *Job) setup(s *Source) error {
 
 	if j.Fetcher == nil {
 		f := &GithubFetcher{
-			BaseDir: path.Join(fetchBaseDir, s.Owner, s.Repo),
-			Source:  s,
+			BaseDir:   path.Join(fetchBaseDir, s.Owner, s.Repo),
+			LogWriter: j.Logger.outFile,
+			Source:    s,
 		}
 		j.Fetcher = f
 	}
