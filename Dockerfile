@@ -26,8 +26,8 @@ RUN set -x \
  && rmdir docker \
  && rm docker.tgz
 
-## Install Docker Compose
-RUN pip install --upgrade docker-compose
+## Install Docker-Compose
+RUN pip install --upgrade docker-compose==1.7.1
 
 ## Allow run docker commands against daemon without having to prefix docker with
 ## `sudo` by giving a docker proxy script sudo rights.
