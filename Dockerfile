@@ -35,6 +35,7 @@ COPY buildfiles/docker-compose /usr/local/sbin/docker-compose
 RUN echo 'nobody ALL=(ALL) NOPASSWD:SETENV: /usr/local/bin/docker, /usr/bin/docker-compose' >> /etc/sudoers
 
 ## Configure nobody user
+COPY buildfiles/config /home/nobody/.ssh/config
 RUN set -x \
  && sed -i 's#nobody:x:65534:65534:nobody:/:/sbin/nologin#nobody:x:65534:65534:nobody:/home/nobody:/sbin/nologin#' /etc/passwd \
  && mkdir -p /home/nobody /seaeye/logs /seaeye/workspace \
