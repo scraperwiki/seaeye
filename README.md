@@ -29,6 +29,17 @@ directory on start time.
 
 TBD.
 
+When using Docker-out-of-Docker (DooD) and volume mounts are required but the
+paths inside and outside can't be made equal, the volume path inside must be a
+prefix to the outside path _and_ the special environment variable
+`SEAYEYE_WORKSPACE` must be set. E.g.:
+
+     -v /seaeye/workspace=/seaeye/workspace # OK
+     :
+     -e SEAEYE_WORKSPACE=/seaeye/workspace -v /data/seaeye/workspace=/seaeye/workspace # OK
+     :
+     -e SEAEYE_WORKSPACE=/seaeye/workspace -v /data/seaeye/workspace=/seaeye # NOT OK
+
 
 ## Setup
 
