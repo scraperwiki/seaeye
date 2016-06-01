@@ -93,5 +93,6 @@ func escapePath(path string) string {
 	p := path
 	p = strings.Replace(p, "/", "_", -1)
 	p = strings.Replace(p, ":", "_", -1)
+	p = filepath.Clean(p)
 	return p
 }
