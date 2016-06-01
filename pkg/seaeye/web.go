@@ -150,7 +150,12 @@ func statusJobHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 	id := vars["id"]
 	rev := vars["rev"]
 
-	logFilePath := LogFilePath(id, rev)
+	logFilePath, err := ctx.config.LogFilePath(id, rev)
+	if err != nil {
+		sendHTTPError(w, err)
+		return
+	}
+
 	http.ServeFile(w, req, logFilePath)
 }
 

@@ -7,19 +7,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/scraperwiki/seaeye/pkg/exec"
 	"golang.org/x/net/context"
-)
-
-const (
-	// LogBaseDir defines the base directory to log files.
-	logBaseDir = "logs"
-	// FetchBaseDir defines the base directory to any fetched source files.
-	fetchBaseDir = "workspace"
-	// testExecutionTimeout
-	testExecutionTimeout = 1 * time.Hour
 )
 
 // Job is responsible for an describes all necessary modules to execute a job.
@@ -50,11 +40,11 @@ func (j *Job) Execute(s *Source) error {
 // Setup ensures that all relevant job parts are configured and instatiated.
 func (j *Job) setup(s *Source) error {
 	if j.ID == "" {
-		j.ID = sanitizePath(path.Join(s.Owner, s.Repo))
+		j.ID = escapePath(path.Join(s.Owner, s.Repo))
 	}
 
 	if j.Logger == nil {
-		logFilePath, err := filepath.Abs(LogFilePath(j.ID, s.Rev))
+		logFilePath, err := j.Config.LogFilePath(j.ID, s.Rev)
 		if err != nil {
 			return err
 		}
@@ -69,7 +59,7 @@ func (j *Job) setup(s *Source) error {
 
 	if j.Fetcher == nil {
 		f := &GithubFetcher{
-			BaseDir:   path.Join(fetchBaseDir, s.Owner, s.Repo),
+			BaseDir:   path.Join(j.Config.FetchBaseDir, s.Owner, s.Repo),
 			LogWriter: j.Logger.outFile,
 			Source:    s,
 		}
@@ -78,7 +68,7 @@ func (j *Job) setup(s *Source) error {
 
 	if j.Notifier == nil {
 		c := NewOAuthGithubClient(j.Config.GithubToken)
-		t := j.Config.BaseURL + fmt.Sprintf("/jobs/%s/status/%s", j.ID, sanitizePath(s.Rev))
+		t := j.Config.BaseURL + fmt.Sprintf("/jobs/%s/status/%s", j.ID, escapePath(s.Rev))
 		n := &GithubNotifier{
 			Client:    c,
 			Source:    s,
@@ -147,7 +137,7 @@ func (j *Job) run() error {
 
 // Test runs the tests defined in the manifest.
 func (j *Job) Test(m *Manifest, wd string) error {
-	dockerWd, err := dockerWd(wd)
+	dockerWd, err := j.dockerWd(wd)
 	if err != nil {
 		return err
 	}
@@ -158,7 +148,7 @@ func (j *Job) Test(m *Manifest, wd string) error {
 
 	env := prepareEnv(m.Environment)
 
-	ctx, cancel := context.WithTimeout(context.Background(), testExecutionTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), j.Config.ExecTimeout)
 	defer cancel()
 
 	for _, line := range m.Test {
@@ -178,24 +168,13 @@ func (j *Job) Test(m *Manifest, wd string) error {
 	return nil
 }
 
-// LogFilePath assembles a log file path from a job id and revision.
-func LogFilePath(jobID, rev string) string {
-	saneID := sanitizePath(jobID) // e.g.: scraperwiki/foo
-	saneRev := sanitizePath(rev)  // e.g.: refs/origin/master
-	return path.Join(logBaseDir, saneID, saneRev, "log.txt")
-}
-
-func sanitizePath(path string) string {
-	return strings.Replace(strings.Replace(path, "/", "_", -1), ":", "_", -1)
-}
-
-func dockerWd(wd string) (string, error) {
+func (j *Job) dockerWd(wd string) (string, error) {
 	wdOutside, errO := filepath.Abs(os.Getenv("SEAEYE_WORKSPACE"))
 	if errO != nil {
 		return "", errO
 	}
 
-	wdInside, errI := filepath.Abs(fetchBaseDir)
+	wdInside, errI := filepath.Abs(j.Config.FetchBaseDir)
 	if errI != nil {
 		return "", errI
 	}
