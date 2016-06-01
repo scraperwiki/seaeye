@@ -21,10 +21,10 @@ const (
 type Config struct {
 	// BaseURL holds Seaeye's link scheme, authority, and port.
 	BaseURL string
-	// ExecTimeout defines the timeout after which test execution steps are
+	// ExecTimeout holds the timeout after which test execution steps are
 	// canceled.
 	ExecTimeout time.Duration
-	// FetchBaseDir defines the base directory to any fetched source files.
+	// FetchBaseDir holds the base directory to any fetched source files.
 	FetchBaseDir string
 	// GithubToken holds a Personal Access Token for Github to authenticate
 	// commit status updates via Github API.
@@ -33,7 +33,7 @@ type Config struct {
 	HookbotEndpoint string
 	// HostPort holds Seaeye's server host and port.
 	HostPort string
-	// LogBaseDir defines the base directory to log files.
+	// LogBaseDir holds the base directory to log files.
 	LogBaseDir string
 	// Seaeye version
 	Version string
@@ -46,14 +46,24 @@ func NewConfig() *Config {
 
 	conf := &Config{
 		BaseURL:      configDefaultBaseURL,
+		ExecTimeout:  configDefaultExecTimeout,
+		FetchBaseDir: configDefaultFetchBaseDir,
 		HostPort:     configDefaultHostPort,
 		LogBaseDir:   configDefaultLogBaseDir,
-		FetchBaseDir: configDefaultFetchBaseDir,
-		ExecTimeout:  configDefaultExecTimeout,
 	}
 
 	if v, ok := os.LookupEnv("SEAEYE_BASEURL"); ok {
 		conf.BaseURL = v
+	}
+	if v, ok := os.LookupEnv("SEAEYE_EXEC_TIMEOUT"); ok {
+		if d, err := time.ParseDuration(v); err != nil {
+			log.Printf("[W][config] Failed to parse SEAEYE_EXEC_TIMEOUT: %v", err)
+		} else {
+			conf.ExecTimeout = d
+		}
+	}
+	if v, ok := os.LookupEnv("SEAEYE_FETCH_BASEDIR"); ok {
+		conf.FetchBaseDir = v
 	}
 	if v, ok := os.LookupEnv("SEAEYE_GITHUB_TOKEN"); ok {
 		conf.GithubToken = v
@@ -66,16 +76,6 @@ func NewConfig() *Config {
 	}
 	if v, ok := os.LookupEnv("SEAEYE_LOG_BASEDIR"); ok {
 		conf.LogBaseDir = v
-	}
-	if v, ok := os.LookupEnv("SEAEYE_FETCH_BASEDIR"); ok {
-		conf.FetchBaseDir = v
-	}
-	if v, ok := os.LookupEnv("SEAEYE_EXEC_TIMEOUT"); ok {
-		if d, err := time.ParseDuration(v); err != nil {
-			log.Printf("[W][config] Failed to parse SEAEYE_EXEC_TIMEOUT: %v", err)
-		} else {
-			conf.ExecTimeout = d
-		}
 	}
 
 	return conf
