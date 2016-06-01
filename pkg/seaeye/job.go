@@ -119,7 +119,12 @@ func (j *Job) run() error {
 
 	// Test
 	j.Logger.Printf("[I][job] Testing started")
-	if err := j.Test(m, j.Fetcher.CheckoutDir()); err != nil {
+	wd, err := filepath.Abs(j.Fetcher.CheckoutDir())
+	if err != nil {
+		j.Logger.Printf("[E][job] Testing preparation failed: %v", err)
+		return err
+	}
+	if err := j.Test(m, wd); err != nil {
 		j.Logger.Printf("[E][job] Testing failed: %v", err)
 		if _, ok := err.(*exec.ExitError); ok {
 			_ = j.Notifier.Notify("failure", "Stage Testing failed")
@@ -137,14 +142,9 @@ func (j *Job) run() error {
 
 // Test runs the tests defined in the manifest.
 func (j *Job) Test(m *Manifest, wd string) error {
-	dockerWd, err := j.dockerWd(wd)
-	if err != nil {
-		return err
-	}
-
 	// Set build-specific environment variables
 	_ = os.Setenv("WORKSPACE", wd)
-	_ = os.Setenv("DOCKER_WORKSPACE", dockerWd)
+	_ = os.Setenv("DOCKER_WORKSPACE", path.Join(j.Config.DockerHostVolumeBaseDir, wd))
 
 	env := prepareEnv(m.Environment)
 
@@ -166,27 +166,6 @@ func (j *Job) Test(m *Manifest, wd string) error {
 	}
 
 	return nil
-}
-
-func (j *Job) dockerWd(wd string) (string, error) {
-	wdOutside, errO := filepath.Abs(os.Getenv("SEAEYE_WORKSPACE"))
-	if errO != nil {
-		return "", errO
-	}
-
-	wdInside, errI := filepath.Abs(j.Config.FetchBaseDir)
-	if errI != nil {
-		return "", errI
-	}
-
-	if wdOutside == "/" {
-		return wdInside, nil
-	} else if !strings.HasSuffix(wdOutside, wdInside) {
-		return "", fmt.Errorf("non-suffix outside workdirectory")
-	}
-
-	dockerWd := path.Join(strings.TrimSuffix(wdOutside, wdInside), wd)
-	return dockerWd, nil
 }
 
 func prepareEnv(manifestEnv []string) (env []string) {

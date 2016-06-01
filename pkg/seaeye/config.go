@@ -21,6 +21,11 @@ const (
 type Config struct {
 	// BaseURL holds Seaeye's link scheme, authority, and port.
 	BaseURL string
+	// DockerHostVolumeBaseDir holds the host's Docker volume path prefix. If
+	// empty, it is assumed that either no volume was mounted on the host or
+	// that the volume mount paths on the host and in the container are
+	// identical.
+	DockerHostVolumeBaseDir string
 	// ExecTimeout holds the timeout after which test execution steps are
 	// canceled.
 	ExecTimeout time.Duration
@@ -54,6 +59,9 @@ func NewConfig() *Config {
 
 	if v, ok := os.LookupEnv("SEAEYE_BASEURL"); ok {
 		conf.BaseURL = v
+	}
+	if v, ok := os.LookupEnv("SEAEYE_DOCKER_VOL_BASEDIR"); ok {
+		conf.DockerHostVolumeBaseDir = v
 	}
 	if v, ok := os.LookupEnv("SEAEYE_EXEC_TIMEOUT"); ok {
 		if d, err := time.ParseDuration(v); err != nil {
