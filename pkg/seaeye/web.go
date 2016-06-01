@@ -22,15 +22,15 @@ type Server struct {
 	ConnMutex  sync.Mutex
 }
 
-// Context holds a context for http.FuncHandler.
-type Context struct {
+// ServerState provides a global context state for http.FuncHandler.
+type ServerState struct {
 	config *Config
 	builds chan *Build
 	stats  func() Stats
 }
 
-// CtxHandlerFunc defines a http.FuncHandler with context.
-type CtxHandlerFunc func(ctx *Context, w http.ResponseWriter, req *http.Request)
+// StateHandlerFunc defines a http.FuncHandler with state.
+type StateHandlerFunc func(state *ServerState, w http.ResponseWriter, req *http.Request)
 
 type httpError struct {
 	error
@@ -41,18 +41,18 @@ type httpError struct {
 // net.http server is that it knows about the listener and can stop itself
 // gracefully.
 func NewWebServer(conf *Config, builds chan *Build, stats func() Stats) *Server {
-	ctx := &Context{
+	state := &ServerState{
 		config: conf,
 		builds: builds,
 		stats:  stats,
 	}
 
 	router := mux.NewRouter()
-	router.Path("/").Methods("GET").HandlerFunc(wrap(ctx, indexHandler))
-	router.Path("/health").Methods("GET").HandlerFunc(wrap(ctx, healthHandler))
-	router.Path("/jobs/{id}/status/{rev}").Methods("GET").HandlerFunc(wrap(ctx, statusJobHandler))
-	router.Path("/login").Methods("GET").HandlerFunc(wrap(ctx, loginHandler))
-	router.Path("/webhook").Methods("PUT", "POST").HandlerFunc(wrap(ctx, webhookHandler))
+	router.Path("/").Methods("GET").HandlerFunc(wrap(state, indexHandler))
+	router.Path("/health").Methods("GET").HandlerFunc(wrap(state, healthHandler))
+	router.Path("/jobs/{id}/status/{rev}").Methods("GET").HandlerFunc(wrap(state, statusJobHandler))
+	router.Path("/login").Methods("GET").HandlerFunc(wrap(state, loginHandler))
+	router.Path("/webhook").Methods("PUT", "POST").HandlerFunc(wrap(state, webhookHandler))
 
 	srv := &Server{}
 	srv.Addr = conf.HostPort
@@ -112,28 +112,28 @@ func (srv *Server) connStateHook() func(net.Conn, http.ConnState) {
 	}
 }
 
-func wrap(ctx *Context, handler CtxHandlerFunc) http.HandlerFunc {
+func wrap(state *ServerState, handler StateHandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, req *http.Request) {
-		handler(ctx, w, req)
+		handler(state, w, req)
 	}
 }
 
-func indexHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
+func indexHandler(state *ServerState, w http.ResponseWriter, req *http.Request) {
 	// TODO(uwe): implement
 }
 
-func healthHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
-	stats := ctx.stats()
+func healthHandler(state *ServerState, w http.ResponseWriter, req *http.Request) {
+	stats := state.stats()
 	for k, v := range stats {
 		fmt.Fprintf(w, "%s=%v\n", k, v)
 	}
 }
 
-func loginHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
+func loginHandler(state *ServerState, w http.ResponseWriter, req *http.Request) {
 	// TODO(uwe): implement
 }
 
-func webhookHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
+func webhookHandler(state *ServerState, w http.ResponseWriter, req *http.Request) {
 	s, err := sourceFromRequest(req)
 	if err != nil {
 		log.Printf("[E][web] Invalid github webhook push event: %v", err)
@@ -141,16 +141,16 @@ func webhookHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	j := &Job{Config: ctx.config}
-	ctx.builds <- &Build{Job: j, Source: s}
+	j := &Job{Config: state.config}
+	state.builds <- &Build{Job: j, Source: s}
 }
 
-func statusJobHandler(ctx *Context, w http.ResponseWriter, req *http.Request) {
+func statusJobHandler(state *ServerState, w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	id := vars["id"]
 	rev := vars["rev"]
 
-	logFilePath, err := ctx.config.LogFilePath(id, rev)
+	logFilePath, err := state.config.LogFilePath(id, rev)
 	if err != nil {
 		sendHTTPError(w, err)
 		return
