@@ -18,6 +18,7 @@ type Job struct {
 	Fetcher  *GithubFetcher  // ...to clone git repo.
 	ID       string          // ...to identify for logs.
 	Logger   *FileLogger     // ...to accessed persistent and durable logs via REST endpoint.
+	Manifest *Manifest       // ...to make testing easier.
 	Notifier *GithubNotifier // ...to update commmit statuses.
 }
 
@@ -99,8 +100,7 @@ func (j *Job) run() error {
 	// Fetch
 	j.Logger.Printf("[I][job] Fetching started")
 	_ = j.Notifier.Notify("pending", "Stage Fetching started")
-	err := j.Fetcher.Fetch()
-	if err != nil {
+	if err := j.Fetcher.Fetch(); err != nil {
 		j.Logger.Printf("[E][job] Fetching failed: %v", err)
 		_ = j.Notifier.Notify("error", "Stage Fetching failed")
 		return err
@@ -110,11 +110,14 @@ func (j *Job) run() error {
 	// Defer Cleanup
 	//defer j.Fetcher.Cleanup()
 
-	// Look for manifest
-	m, err := FindManifest(j.Fetcher.CheckoutDir())
-	if err != nil {
-		log.Printf("[E][job] Failed to find valid manifest: %v", err)
-		return err
+	if j.Manifest == nil {
+		// Look for manifest
+		m, err := FindManifest(j.Fetcher.CheckoutDir())
+		if err != nil {
+			log.Printf("[E][job] Failed to find valid manifest: %v", err)
+			return err
+		}
+		j.Manifest = m
 	}
 
 	// Test
@@ -124,7 +127,8 @@ func (j *Job) run() error {
 		j.Logger.Printf("[E][job] Testing preparation failed: %v", err)
 		return err
 	}
-	if err := j.Test(m, wd); err != nil {
+	env := j.prepareEnv(wd)
+	if err := j.Test(wd, env); err != nil {
 		j.Logger.Printf("[E][job] Testing failed: %v", err)
 		if _, ok := err.(*exec.ExitError); ok {
 			_ = j.Notifier.Notify("failure", "Stage Testing failed")
@@ -141,17 +145,12 @@ func (j *Job) run() error {
 }
 
 // Test runs the tests defined in the manifest.
-func (j *Job) Test(m *Manifest, wd string) error {
-	// Set build-specific environment variables
-	_ = os.Setenv("WORKSPACE", wd)
-	_ = os.Setenv("DOCKER_WORKSPACE", path.Join(j.Config.DockerHostVolumeBaseDir, wd))
-
-	env := prepareEnv(m.Environment)
-
+func (j *Job) Test(wd string, env []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), j.Config.ExecTimeout)
 	defer cancel()
 
-	for _, line := range m.Test {
+	instructions := j.Manifest.Test
+	for _, line := range instructions {
 		cmd := exec.CommandContext(ctx, line[0], line[1:]...)
 		cmd.Dir = wd
 		cmd.Env = env
@@ -168,13 +167,19 @@ func (j *Job) Test(m *Manifest, wd string) error {
 	return nil
 }
 
-func prepareEnv(manifestEnv []string) (env []string) {
-	envs := append(os.Environ(), manifestEnv...)
-
-	for _, e := range envs {
+func (j *Job) prepareEnv(wd string) (env []string) {
+	for _, e := range os.Environ() {
 		if !strings.HasPrefix(e, "SEAEYE_") {
 			env = append(env, e)
 		}
 	}
-	return
+
+	// Append build-specific environment variables
+	env = append(env, fmt.Sprintf(`WORKSPACE="%s"`, wd))
+	env = append(env, fmt.Sprintf(`DOCKER_WORKSPACE="%s"`, path.Join(j.Config.DockerHostVolumeBaseDir, wd)))
+
+	// Append manifest environment variables
+	env = append(env, j.Manifest.Environment...)
+
+	return env
 }
