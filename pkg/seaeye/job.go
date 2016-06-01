@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/scraperwiki/seaeye/pkg/exec"
+	"golang.org/x/net/context"
 )
 
 const (
@@ -15,6 +18,8 @@ const (
 	logBaseDir = "logs"
 	// FetchBaseDir defines the base directory to any fetched source files.
 	fetchBaseDir = "workspace"
+	// testExecutionTimeout
+	testExecutionTimeout = 1 * time.Hour
 )
 
 // Job is responsible for an describes all necessary modules to execute a job.
@@ -153,8 +158,11 @@ func (j *Job) Test(m *Manifest, wd string) error {
 
 	env := prepareEnv(m.Environment)
 
+	ctx, cancel := context.WithTimeout(context.Background(), testExecutionTimeout)
+	defer cancel()
+
 	for _, line := range m.Test {
-		cmd := exec.Command(line[0], line[1:]...)
+		cmd := exec.CommandContext(ctx, line[0], line[1:]...)
 		cmd.Dir = wd
 		cmd.Env = env
 		cmd.Stdout = j.Logger.outFile
@@ -166,6 +174,7 @@ func (j *Job) Test(m *Manifest, wd string) error {
 			return err
 		}
 	}
+
 	return nil
 }
 
