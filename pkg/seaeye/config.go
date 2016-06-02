@@ -15,6 +15,8 @@ const (
 	configDefaultLogBaseDir   = "logs"
 	configDefaultFetchBaseDir = "workspace"
 	configDefaultExecTimeout  = 1 * time.Hour
+
+	internalEnvPrefix = "SEAEYE_"
 )
 
 // Config specifies the configuration to run the seaeye application.
@@ -57,32 +59,32 @@ func NewConfig() *Config {
 		LogBaseDir:   configDefaultLogBaseDir,
 	}
 
-	if v, ok := os.LookupEnv("SEAEYE_BASEURL"); ok {
+	if v, ok := os.LookupEnv(internalEnvPrefix + "BASEURL"); ok {
 		conf.BaseURL = v
 	}
-	if v, ok := os.LookupEnv("SEAEYE_DOCKER_VOL_BASEDIR"); ok {
+	if v, ok := os.LookupEnv(internalEnvPrefix + "DOCKER_VOL_BASEDIR"); ok {
 		conf.DockerHostVolumeBaseDir = v
 	}
-	if v, ok := os.LookupEnv("SEAEYE_EXEC_TIMEOUT"); ok {
+	if v, ok := os.LookupEnv(internalEnvPrefix + "EXEC_TIMEOUT"); ok {
 		if d, err := time.ParseDuration(v); err != nil {
-			log.Printf("[W][config] Failed to parse SEAEYE_EXEC_TIMEOUT: %v", err)
+			log.Printf("[W][config] Failed to parse EXEC_TIMEOUT: %v", err)
 		} else {
 			conf.ExecTimeout = d
 		}
 	}
-	if v, ok := os.LookupEnv("SEAEYE_FETCH_BASEDIR"); ok {
+	if v, ok := os.LookupEnv(internalEnvPrefix + "FETCH_BASEDIR"); ok {
 		conf.FetchBaseDir = v
 	}
-	if v, ok := os.LookupEnv("SEAEYE_GITHUB_TOKEN"); ok {
+	if v, ok := os.LookupEnv(internalEnvPrefix + "GITHUB_TOKEN"); ok {
 		conf.GithubToken = v
 	}
-	if v, ok := os.LookupEnv("SEAEYE_HOOKBOT_ENDPOINT"); ok {
+	if v, ok := os.LookupEnv(internalEnvPrefix + "HOOKBOT_ENDPOINT"); ok {
 		conf.HookbotEndpoint = v
 	}
-	if v, ok := os.LookupEnv("SEAEYE_HOSTPORT"); ok {
+	if v, ok := os.LookupEnv(internalEnvPrefix + "HOSTPORT"); ok {
 		conf.HostPort = v
 	}
-	if v, ok := os.LookupEnv("SEAEYE_LOG_BASEDIR"); ok {
+	if v, ok := os.LookupEnv(internalEnvPrefix + "LOG_BASEDIR"); ok {
 		conf.LogBaseDir = v
 	}
 

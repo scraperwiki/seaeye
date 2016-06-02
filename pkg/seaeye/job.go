@@ -13,8 +13,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-const internalEnvPrefix = "SEAEYE_"
-
 // Job is responsible for an describes all necessary modules to execute a job.
 type Job struct {
 	Config   *Config         // ...to prefix targetURL with BaseURL.
