@@ -6,11 +6,14 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/scraperwiki/seaeye/pkg/exec"
 	"golang.org/x/net/context"
 )
+
+const internalEnvPrefix = "SEAEYE_"
 
 // Job is responsible for an describes all necessary modules to execute a job.
 type Job struct {
@@ -168,8 +171,14 @@ func (j *Job) Test(wd string, env []string) error {
 }
 
 func (j *Job) prepareEnv(wd string) (env []string) {
+	// Append only environment variables that are not meant for internal use
+	// only or belong to this job.
+	jobEnv := envVarCompliant(strings.ToUpper(j.ID))
+	jobEnvPrefix := fmt.Sprintf("%s%s_", internalEnvPrefix, jobEnv)
 	for _, e := range os.Environ() {
-		if !strings.HasPrefix(e, "SEAEYE_") {
+		if strings.HasPrefix(e, jobEnvPrefix) {
+			env = append(env, strings.TrimPrefix(e, jobEnvPrefix))
+		} else if !strings.HasPrefix(e, internalEnvPrefix) {
 			env = append(env, e)
 		}
 	}
@@ -182,4 +191,17 @@ func (j *Job) prepareEnv(wd string) (env []string) {
 	env = append(env, j.Manifest.Environment...)
 
 	return env
+}
+
+var posixEnvVarPattern = regexp.MustCompile(`[A-Z_]+[0-9A-Z_]+`)
+var posixEnvVarBlacklistPattern = regexp.MustCompile(`[^0-9A-Z_]`)
+
+// envVarCompliant takes an environment variable name and alters it become
+// compliant with  the IEEE Std 1003.1-2008 / IEEE POSIX P1003.2/ISO 9945.2
+// standard.
+//
+// See http://www.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_10_02
+func envVarCompliant(name string) string {
+	newName := posixEnvVarBlacklistPattern.ReplaceAllLiteralString(name, "")
+	return posixEnvVarPattern.FindString(newName)
 }
