@@ -184,8 +184,8 @@ func (j *Job) prepareEnv(wd string) (env []string) {
 	}
 
 	// Append build-specific environment variables
-	env = append(env, fmt.Sprintf(`WORKSPACE="%s"`, wd))
-	env = append(env, fmt.Sprintf(`DOCKER_WORKSPACE="%s"`, path.Join(j.Config.DockerHostVolumeBaseDir, wd)))
+	env = append(env, fmt.Sprintf(`WORKSPACE=%s`, wd))
+	env = append(env, fmt.Sprintf(`DOCKER_WORKSPACE=%s`, path.Join(j.Config.DockerHostVolumeBaseDir, wd)))
 
 	// Append manifest environment variables
 	env = append(env, j.Manifest.Environment...)
