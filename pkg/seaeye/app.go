@@ -2,6 +2,7 @@ package seaeye
 
 import (
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -55,8 +56,8 @@ func (a *App) Start() error {
 			Endpoint: a.Config.HookbotEndpoint,
 			Hook: func(event *github.PushEvent) error {
 				g := &GithubTrigger{}
-				url := a.Config.BaseURL + "/webhook"
-				return g.Post(url, event)
+				url := &url.URL{Scheme: "http", Host: a.Config.HostPort, Path: "webhook"}
+				return g.Post(url.String(), event)
 			},
 		}
 	}
