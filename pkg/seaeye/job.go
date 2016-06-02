@@ -165,6 +165,7 @@ func (j *Job) Test(wd string, env []string) error {
 			j.Logger.Printf("[I][job] Command failed: %v", err)
 			return err
 		}
+		j.Logger.Printf("[I][job] Command succeeded.")
 	}
 
 	return nil
