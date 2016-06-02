@@ -197,7 +197,7 @@ var posixEnvVarPattern = regexp.MustCompile(`[A-Z_]+[0-9A-Z_]+`)
 var posixEnvVarBlacklistPattern = regexp.MustCompile(`[^0-9A-Z_]`)
 
 // envVarCompliant takes an environment variable name and alters it become
-// compliant with  the IEEE Std 1003.1-2008 / IEEE POSIX P1003.2/ISO 9945.2
+// compliant with the IEEE Std 1003.1-2008 / IEEE POSIX P1003.2/ISO 9945.2
 // standard.
 //
 // See http://www.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_10_02
