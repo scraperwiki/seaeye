@@ -16,8 +16,6 @@ var colors = []string{
 func ansiToHTML(text []byte) []byte {
 	var buf bytes.Buffer
 
-	text = bytes.Replace(text, []byte("\n"), []byte("<br/>"), -1)
-
 	re := regexp.MustCompile("\u001B\\[([0-9A-Za-z;]+)m([^\u001B]+)")
 	matches := re.FindAllSubmatch(text, -1)
 	if matches == nil {
