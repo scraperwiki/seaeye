@@ -4,9 +4,11 @@ package seaeye
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -137,7 +139,8 @@ func webhookHandler(state *ServerState, w http.ResponseWriter, req *http.Request
 	s, err := sourceFromRequest(req)
 	if err != nil {
 		log.Printf("[E][web] Invalid github webhook push event: %v", err)
-		sendHTTPError(w, err)
+		msg, code := toHTTPError(err)
+		http.Error(w, msg, code)
 		return
 	}
 
@@ -152,14 +155,22 @@ func statusJobHandler(state *ServerState, w http.ResponseWriter, req *http.Reque
 
 	logFilePath, err := state.config.LogFilePath(id, rev)
 	if err != nil {
-		sendHTTPError(w, err)
+		msg, code := toHTTPError(err)
+		http.Error(w, msg, code)
 		return
 	}
 
-	// TODO(uwe): Render as html (e.g. ansi escape codes)
 	// TODO(uwe): Stream output
 
-	http.ServeFile(w, req, logFilePath)
+	b, err := ioutil.ReadFile(logFilePath)
+	if err != nil {
+		msg, code := toHTTPError(err)
+		http.Error(w, msg, code)
+		return
+	}
+
+	w.Header().Set("Content-type", "text/html")
+	w.Write(ansiToHTML(b))
 }
 
 func sourceFromRequest(req *http.Request) (*Source, error) {
@@ -190,10 +201,17 @@ func sourceFromRequest(req *http.Request) (*Source, error) {
 	return s, nil
 }
 
-func sendHTTPError(w http.ResponseWriter, err error) {
+func toHTTPError(err error) (msg string, httpStatus int) {
 	if httpErr, ok := err.(*httpError); ok {
-		http.Error(w, httpErr.Error(), httpErr.Status)
-	} else {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return httpErr.Error(), httpErr.Status
 	}
+	if os.IsNotExist(err) {
+		return fmt.Sprintf("%d %s", http.StatusNotFound,
+			http.StatusText(http.StatusNotFound)), http.StatusNotFound
+	}
+	if os.IsPermission(err) {
+		return fmt.Sprintf("%d %s", http.StatusForbidden,
+			http.StatusText(http.StatusForbidden)), http.StatusForbidden
+	}
+	return err.Error(), http.StatusInternalServerError
 }
