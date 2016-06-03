@@ -156,6 +156,9 @@ func statusJobHandler(state *ServerState, w http.ResponseWriter, req *http.Reque
 		return
 	}
 
+	// TODO(uwe): Render as html (e.g. ansi escape codes)
+	// TODO(uwe): Stream output
+
 	http.ServeFile(w, req, logFilePath)
 }
 
