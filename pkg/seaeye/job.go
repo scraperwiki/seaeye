@@ -159,7 +159,11 @@ func (j *Job) Test(wd string, env []string) error {
 
 		j.Logger.Printf("[I][job] %s Running command: %v (%s)", j.ID, cmd.Args, cmd.Dir)
 		if err := cmd.Run(); err != nil {
-			j.Logger.Printf("[I][job] %s Command failed: %v", j.ID, err)
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				j.Logger.Printf("[I][job] %s Command failed: %v", j.ID, exitErr)
+			} else {
+				j.Logger.Printf("[I][job] %s Command error: %v", j.ID, err)
+			}
 			return err
 		}
 		j.Logger.Printf("[I][job] %s Command succeeded.", j.ID)
