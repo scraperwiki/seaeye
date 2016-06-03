@@ -30,9 +30,9 @@ func (j *Job) Execute(s *Source) error {
 	}
 	defer j.Logger.outFile.Close()
 
-	j.Logger.Println("[I][job] Running")
+	j.Logger.Printf("[I][job] %s Running", j.ID)
 	if err := j.run(); err != nil {
-		j.Logger.Printf("[E][job] Run failed: %v", err)
+		j.Logger.Printf("[E][job] %s Run failed: %v", j.ID, err)
 		return err
 	}
 
@@ -50,13 +50,12 @@ func (j *Job) setup(s *Source) error {
 		if err != nil {
 			return err
 		}
-		prefix := log.Prefix() + j.ID + " "
-		logger, err := NewFileLogger(logFilePath, prefix, log.LstdFlags)
+		logger, err := NewFileLogger(logFilePath, log.Prefix(), log.LstdFlags)
 		if err != nil {
 			return err
 		}
 		j.Logger = logger
-		log.Printf("[I][job] Created logger: %s", j.Logger.outFile.Name())
+		j.Logger.Printf("[I][job] %s Created logger: %s", j.ID, j.Logger.outFile.Name())
 	}
 
 	if j.Fetcher == nil {
@@ -99,14 +98,14 @@ func (j *Job) run() error {
 	// - Should getting tools be specified in the manifest as docker run commands?
 
 	// Fetch
-	j.Logger.Printf("[I][job] Fetching started")
+	j.Logger.Printf("[I][job] %s Fetching started", j.ID)
 	_ = j.Notifier.Notify("pending", "Stage Fetching started")
 	if err := j.Fetcher.Fetch(); err != nil {
-		j.Logger.Printf("[E][job] Fetching failed: %v", err)
+		j.Logger.Printf("[E][job] %s Fetching failed: %v", j.ID, err)
 		_ = j.Notifier.Notify("error", "Stage Fetching failed")
 		return err
 	}
-	j.Logger.Printf("[I][job] Fetching succeeded")
+	j.Logger.Printf("[I][job] %s Fetching succeeded", j.ID)
 
 	// Defer Cleanup
 	//defer j.Fetcher.Cleanup()
@@ -115,22 +114,22 @@ func (j *Job) run() error {
 		// Look for manifest
 		m, err := FindManifest(j.Fetcher.CheckoutDir())
 		if err != nil {
-			log.Printf("[E][job] Failed to find valid manifest: %v", err)
+			j.Logger.Printf("[E][job] %s Failed to find valid manifest: %v", j.ID, err)
 			return err
 		}
 		j.Manifest = m
 	}
 
 	// Test
-	j.Logger.Printf("[I][job] Testing started")
+	j.Logger.Printf("[I][job] %s Testing started", j.ID)
 	wd, err := filepath.Abs(j.Fetcher.CheckoutDir())
 	if err != nil {
-		j.Logger.Printf("[E][job] Testing preparation failed: %v", err)
+		j.Logger.Printf("[E][job] %s Testing preparation failed: %v", j.ID, err)
 		return err
 	}
 	env := j.prepareEnv(wd)
 	if err := j.Test(wd, env); err != nil {
-		j.Logger.Printf("[E][job] Testing failed: %v", err)
+		j.Logger.Printf("[E][job] %s Testing failed: %v", j.ID, err)
 		if _, ok := err.(*exec.ExitError); ok {
 			_ = j.Notifier.Notify("failure", "Stage Testing failed")
 		} else {
@@ -138,7 +137,7 @@ func (j *Job) run() error {
 		}
 		return err
 	}
-	j.Logger.Printf("[I][job] Testing succeeded")
+	j.Logger.Printf("[I][job] %s Testing succeeded", j.ID)
 
 	// Done
 	_ = j.Notifier.Notify("success", "All stages succeeded")
@@ -158,12 +157,12 @@ func (j *Job) Test(wd string, env []string) error {
 		cmd.Stdout = j.Logger.outFile
 		cmd.Stderr = j.Logger.outFile
 
-		j.Logger.Printf("[I][job] Running command: %v (%s)", cmd.Args, cmd.Dir)
+		j.Logger.Printf("[I][job] %s Running command: %v (%s)", j.ID, cmd.Args, cmd.Dir)
 		if err := cmd.Run(); err != nil {
-			j.Logger.Printf("[I][job] Command failed: %v", err)
+			j.Logger.Printf("[I][job] %s Command failed: %v", j.ID, err)
 			return err
 		}
-		j.Logger.Printf("[I][job] Command succeeded.")
+		j.Logger.Printf("[I][job] %s Command succeeded.", j.ID)
 	}
 
 	return nil
