@@ -170,7 +170,7 @@ func statusJobHandler(state *ServerState, w http.ResponseWriter, req *http.Reque
 	}
 
 	w.Header().Set("Content-type", "text/html")
-	w.Write(ansiToHTML(b))
+	w.Write(toHTML(b))
 }
 
 func sourceFromRequest(req *http.Request) (*Source, error) {
