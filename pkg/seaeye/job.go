@@ -110,24 +110,35 @@ func (j *Job) run() error {
 	// Defer Cleanup
 	//defer j.Fetcher.Cleanup()
 
+	// Prepare
+	j.Logger.Printf("[I][job] %s Preparing started", j.ID)
+	_ = j.Notifier.Notify("pending", "Stage Preparing started")
+	wd, err := filepath.Abs(j.Fetcher.CheckoutDir())
+	if err != nil {
+		j.Logger.Printf("[E][job] %s Preparation failed: %v", j.ID, err)
+		_ = j.Notifier.Notify("error", "Stage Preparing failed")
+		return err
+	}
+
 	if j.Manifest == nil {
-		// Look for manifest
-		m, err := FindManifest(j.Fetcher.CheckoutDir())
+		j.Logger.Printf("[I][job] %s Looking for manifest failed: %v", j.ID, wd)
+		m, err := FindManifest(wd)
 		if err != nil {
 			j.Logger.Printf("[E][job] %s Failed to find valid manifest: %v", j.ID, err)
+			// Report no manifest found as success to Github as we can't
+			// distinguish if that was intended or not.
+			// _ = j.Notifier.Notify("error", "Stage Preparing failed")
+			_ = j.Notifier.Notify("success", "No manifest found")
 			return err
 		}
 		j.Manifest = m
 	}
 
+	env := j.prepareEnv(wd)
+
 	// Test
 	j.Logger.Printf("[I][job] %s Testing started", j.ID)
-	wd, err := filepath.Abs(j.Fetcher.CheckoutDir())
-	if err != nil {
-		j.Logger.Printf("[E][job] %s Testing preparation failed: %v", j.ID, err)
-		return err
-	}
-	env := j.prepareEnv(wd)
+	_ = j.Notifier.Notify("pending", "Stage Testing started")
 	if err := j.Test(wd, env); err != nil {
 		j.Logger.Printf("[E][job] %s Testing failed: %v", j.ID, err)
 		if _, ok := err.(*exec.ExitError); ok {
