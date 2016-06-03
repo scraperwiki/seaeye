@@ -17,14 +17,11 @@ RUN set -x \
  && pip install --upgrade pip
 
 ## Install Docker
-## See: https://github.com/docker-library/docker/blob/f7ee50684c7ec92ce885c8b93a4ed22ddbb660f8/1.11/Dockerfile
+## See: https://github.com/docker-library/docker/blob/master/1.10/Dockerfile
 RUN set -x \
- && curl -fSL "https://get.docker.com/builds/Linux/x86_64/docker-1.11.1.tgz" -o docker.tgz \
- && echo "893e3c6e89c0cd2c5f1e51ea41bc2dd97f5e791fcfa3cee28445df277836339d *docker.tgz" | sha256sum -c - \
- && tar -xzvf docker.tgz \
- && mv docker/* /usr/local/bin/ \
- && rmdir docker \
- && rm docker.tgz
+ && curl -fSL "https://get.docker.com/builds/Linux/x86_64/docker-1.10.3" -o /usr/local/bin/docker \
+ && echo "d0df512afa109006a450f41873634951e19ddabf8c7bd419caeb5a526032d86d  /usr/local/bin/docker" | sha256sum -c - \
+ && chmod +x /usr/local/bin/docker
 
 ## Install Docker-Compose
 RUN pip install --upgrade docker-compose==1.7.1
