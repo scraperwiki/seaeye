@@ -83,7 +83,7 @@ func (j *Job) setup(s *Source) error {
 
 // Run executes the pipeline.
 func (j *Job) run() error {
-	_ = j.Notifier.Notify("pending", "Starting...")
+	//_ = j.Notifier.Notify("pending", "Starting...")
 
 	// TODO(uwe): Either fetch into a docker container already running, or
 	// fetch first outside container and then copy all files into the container,
@@ -99,7 +99,7 @@ func (j *Job) run() error {
 
 	// Fetch
 	j.Logger.Printf("[I][job] %s Fetching started", j.ID)
-	_ = j.Notifier.Notify("pending", "Stage Fetching started")
+	//_ = j.Notifier.Notify("pending", "Stage Fetching started")
 	if err := j.Fetcher.Fetch(); err != nil {
 		j.Logger.Printf("[E][job] %s Fetching failed: %v", j.ID, err)
 		_ = j.Notifier.Notify("error", "Stage Fetching failed")
@@ -112,7 +112,7 @@ func (j *Job) run() error {
 
 	// Prepare
 	j.Logger.Printf("[I][job] %s Preparing started", j.ID)
-	_ = j.Notifier.Notify("pending", "Stage Preparing started")
+	//_ = j.Notifier.Notify("pending", "Stage Preparing started")
 	wd, err := filepath.Abs(j.Fetcher.CheckoutDir())
 	if err != nil {
 		j.Logger.Printf("[E][job] %s Preparation failed: %v", j.ID, err)
@@ -127,8 +127,7 @@ func (j *Job) run() error {
 			j.Logger.Printf("[E][job] %s Failed to find valid manifest: %v", j.ID, err)
 			// Report no manifest found as success to Github as we can't
 			// distinguish if that was intended or not.
-			// _ = j.Notifier.Notify("error", "Stage Preparing failed")
-			_ = j.Notifier.Notify("success", "No manifest found")
+			//_ = j.Notifier.Notify("success", "No manifest found")
 			return err
 		}
 		j.Manifest = m
