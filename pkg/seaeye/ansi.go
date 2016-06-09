@@ -14,15 +14,13 @@ var colors = []string{
 }
 
 func toHTML(text []byte) []byte {
-	var buf bytes.Buffer
-
 	re := regexp.MustCompile("\u001B\\[([0-9A-Za-z;]+)m([^\u001B]+)")
 	matches := re.FindAllSubmatch(text, -1)
 	if matches == nil {
-		buf.Write(text)
-		buf.WriteString("</pre>")
-		return buf.Bytes()
+		return text
 	}
+
+	var buf bytes.Buffer
 
 	for _, match := range matches {
 		bg, fg := -1, -1
@@ -92,6 +90,5 @@ func toHTML(text []byte) []byte {
 		}
 	}
 
-	buf.WriteString("</pre>")
 	return buf.Bytes()
 }
