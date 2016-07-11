@@ -10,11 +10,14 @@ import (
 )
 
 const (
-	configDefaultHostPort     = ":19515" // "SEAE"(YE)
-	configDefaultBaseURL      = "http://localhost:19515"
-	configDefaultLogBaseDir   = "logs"
-	configDefaultFetchBaseDir = "workspace"
-	configDefaultExecTimeout  = 1 * time.Hour
+	defaultHostPort         = ":19515" // "SEAE"(YE)
+	defaultBaseURL          = "http://localhost:19515"
+	defaultHookbotEndpoint  = ""
+	dockerHostVolumeBaseDir = ""
+	defaultGithubToken      = ""
+	defaultLogBaseDir       = "logs"
+	defaultFetchBaseDir     = "workspace"
+	defaultExecTimeout      = "1h"
 
 	internalEnvPrefix = "SEAEYE_"
 )
@@ -51,44 +54,35 @@ type Config struct {
 func NewConfig() *Config {
 	log.Println("[I][config] Loading configuration")
 
-	conf := &Config{
-		BaseURL:      configDefaultBaseURL,
-		ExecTimeout:  configDefaultExecTimeout,
-		FetchBaseDir: configDefaultFetchBaseDir,
-		HostPort:     configDefaultHostPort,
-		LogBaseDir:   configDefaultLogBaseDir,
+	return &Config{
+		BaseURL:                 getEnvOr("BASEURL", defaultBaseURL),
+		DockerHostVolumeBaseDir: getEnvOr("DOCKER_VOL_BASEDIR", dockerHostVolumeBaseDir),
+		ExecTimeout:             mustParseDuration(getEnvOr("EXEC_TIMEOUT", defaultExecTimeout)),
+		FetchBaseDir:            getEnvOr("FETCH_BASEDIR", defaultFetchBaseDir),
+		GithubToken:             getEnvOr("GITHUB_TOKEN", defaultGithubToken),
+		HookbotEndpoint:         getEnvOr("HOOKBOT_ENDPOINT", defaultHookbotEndpoint),
+		HostPort:                getEnvOr("HOSTPORT", defaultHostPort),
+		LogBaseDir:              getEnvOr("LOG_BASEDIR", defaultLogBaseDir),
 	}
+}
 
-	if v, ok := os.LookupEnv(internalEnvPrefix + "BASEURL"); ok {
-		conf.BaseURL = v
+func getEnvOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
 	}
-	if v, ok := os.LookupEnv(internalEnvPrefix + "DOCKER_VOL_BASEDIR"); ok {
-		conf.DockerHostVolumeBaseDir = v
-	}
-	if v, ok := os.LookupEnv(internalEnvPrefix + "EXEC_TIMEOUT"); ok {
-		if d, err := time.ParseDuration(v); err != nil {
-			log.Printf("[W][config] Failed to parse EXEC_TIMEOUT: %v", err)
-		} else {
-			conf.ExecTimeout = d
-		}
-	}
-	if v, ok := os.LookupEnv(internalEnvPrefix + "FETCH_BASEDIR"); ok {
-		conf.FetchBaseDir = v
-	}
-	if v, ok := os.LookupEnv(internalEnvPrefix + "GITHUB_TOKEN"); ok {
-		conf.GithubToken = v
-	}
-	if v, ok := os.LookupEnv(internalEnvPrefix + "HOOKBOT_ENDPOINT"); ok {
-		conf.HookbotEndpoint = v
-	}
-	if v, ok := os.LookupEnv(internalEnvPrefix + "HOSTPORT"); ok {
-		conf.HostPort = v
-	}
-	if v, ok := os.LookupEnv(internalEnvPrefix + "LOG_BASEDIR"); ok {
-		conf.LogBaseDir = v
-	}
+	return fallback
+}
 
-	return conf
+func mustParseDuration(s string) time.Duration {
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		log.Fatalf("[W][config] Failed to parse %s: %v", s, err)
+	}
+	return d
+}
+
+func parseBool(s string) bool {
+	return s == "1" || strings.ToLower(s) == "true" || strings.ToLower(s) == "yes"
 }
 
 // LogFilePath assembles a log file path from a job id and revision.
