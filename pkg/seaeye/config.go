@@ -18,6 +18,7 @@ const (
 	defaultLogBaseDir       = "logs"
 	defaultFetchBaseDir     = "workspace"
 	defaultExecTimeout      = "1h"
+	defaultNoNotify         = "false"
 
 	internalEnvPrefix = "SEAEYE_"
 )
@@ -45,6 +46,8 @@ type Config struct {
 	HostPort string
 	// LogBaseDir holds the base directory to log files.
 	LogBaseDir string
+	// NoNotify decides if webhook notifications are sent.
+	NoNotify bool
 	// Seaeye version
 	Version string
 }
@@ -63,6 +66,7 @@ func NewConfig() *Config {
 		HookbotEndpoint:         getEnvOr("HOOKBOT_ENDPOINT", defaultHookbotEndpoint),
 		HostPort:                getEnvOr("HOSTPORT", defaultHostPort),
 		LogBaseDir:              getEnvOr("LOG_BASEDIR", defaultLogBaseDir),
+		NoNotify:                parseBool(getEnvOr("NO_NOTIFY", defaultNoNotify)),
 	}
 }
 

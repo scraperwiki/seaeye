@@ -15,12 +15,12 @@ import (
 
 // Job is responsible for an describes all necessary modules to execute a job.
 type Job struct {
-	Config   *Config         // ...to prefix targetURL with BaseURL.
-	Fetcher  *GithubFetcher  // ...to clone git repo.
-	ID       string          // ...to identify for logs.
-	Logger   *FileLogger     // ...to accessed persistent and durable logs via REST endpoint.
-	Manifest *Manifest       // ...to make testing easier.
-	Notifier *GithubNotifier // ...to update commmit statuses.
+	Config   *Config     // ...to prefix targetURL with BaseURL.
+	Fetcher  Fetcher     // ...to clone git repo.
+	ID       string      // ...to identify for logs.
+	Logger   *FileLogger // ...to accessed persistent and durable logs via REST endpoint.
+	Manifest *Manifest   // ...to make testing easier.
+	Notifier Notifier    // ...to update commmit statuses.
 }
 
 // Execute executes a given task: 1. Setup, 2. Run (2a. Fetch, 2b. Test).
@@ -67,6 +67,9 @@ func (j *Job) setup(s *Source) error {
 		j.Fetcher = f
 	}
 
+	if j.Config.NoNotify {
+		j.Notifier = &DiscardNotifier{}
+	}
 	if j.Notifier == nil {
 		c := NewOAuthGithubClient(j.Config.GithubToken)
 		t := j.Config.BaseURL + fmt.Sprintf("/jobs/%s/status/%s", j.ID, escapePath(s.Rev))
