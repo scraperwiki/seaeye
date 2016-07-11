@@ -23,6 +23,12 @@ type Job struct {
 	Notifier Notifier    // ...to update commmit statuses.
 }
 
+type step struct {
+	name         string
+	instructions [][]string
+	mustSucceed  bool
+}
+
 // Execute executes a given task: 1. Setup, 2. Run (2a. Fetch, 2b. Test).
 func (j *Job) Execute(s *Source) error {
 	if err := j.setup(s); err != nil {
@@ -138,31 +144,42 @@ func (j *Job) run() error {
 
 	env := j.prepareEnv(wd)
 
-	// Test
-	j.Logger.Printf("[I][job] %s Testing started", j.ID)
-	_ = j.Notifier.Notify("pending", "Stage Testing started")
-	if err := j.Test(wd, env); err != nil {
-		j.Logger.Printf("[E][job] %s Testing failed: %v", j.ID, err)
-		if _, ok := err.(*exec.ExitError); ok {
-			_ = j.Notifier.Notify("failure", "Stage Testing failed")
-		} else {
-			_ = j.Notifier.Notify("error", "Stage Testing failed")
-		}
-		return err
+	steps := []*step{
+		&step{name: "Pre", instructions: j.Manifest.Pre, mustSucceed: false},
+		&step{name: "Test", instructions: j.Manifest.Test, mustSucceed: true},
+		&step{name: "Post", instructions: j.Manifest.Post, mustSucceed: false},
 	}
-	j.Logger.Printf("[I][job] %s Testing succeeded", j.ID)
+
+	for _, step := range steps {
+		j.Logger.Printf("[I][job] %s %s started", j.ID, step.name)
+		_ = j.Notifier.Notify("pending", fmt.Sprintf("Stage %s started", step.name))
+
+		if err := j.ExecuteStep(step.instructions, wd, env); err != nil {
+			j.Logger.Printf("[E][job] %s %s failed: %v", j.ID, step.name, err)
+			if _, ok := err.(*exec.ExitError); ok {
+				_ = j.Notifier.Notify("failure", fmt.Sprintf("Stage %s failed", step.name))
+				if !step.mustSucceed {
+					continue
+				}
+			} else {
+				_ = j.Notifier.Notify("error", fmt.Sprintf("Stage %s failed", step.name))
+			}
+			return err
+		}
+
+		j.Logger.Printf("[I][job] %s Testing succeeded", j.ID)
+	}
 
 	// Done
 	_ = j.Notifier.Notify("success", "All stages succeeded")
 	return nil
 }
 
-// Test runs the tests defined in the manifest.
-func (j *Job) Test(wd string, env []string) error {
+// ExecuteStep executes instructions defined in a manifest step.
+func (j *Job) ExecuteStep(instructions [][]string, wd string, env []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), j.Config.ExecTimeout)
 	defer cancel()
 
-	instructions := j.Manifest.Test
 	for _, line := range instructions {
 		cmd := exec.CommandContext(ctx, line[0], line[1:]...)
 		cmd.Dir = wd

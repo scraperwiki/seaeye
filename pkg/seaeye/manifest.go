@@ -16,7 +16,9 @@ var ErrManifestNotFound = errors.New("no manifest file found")
 // Manifest defines the structure of a .seaeye.yml manifest file.
 type Manifest struct {
 	Environment []string   `yaml:",omitempty"`
+	Pre         [][]string `yaml:",omitempty,flow"`
 	Test        [][]string `yaml:",omitempty,flow"`
+	Post        [][]string `yaml:",omitempty,flow"`
 }
 
 // Validate checks the validity of a manifest.

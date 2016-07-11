@@ -1,5 +1,11 @@
 environment:
   - FOO=BAR
 
+pre:
+  - ["env"]
+
 test:
   - ["make", "it"]
+
+post:
+  - ["make clean"]
