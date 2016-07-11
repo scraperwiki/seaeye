@@ -167,7 +167,7 @@ func (j *Job) run() error {
 			return err
 		}
 
-		j.Logger.Printf("[I][job] %s Testing succeeded", j.ID)
+		j.Logger.Printf("[I][job] %s %s succeeded", step.name, j.ID)
 	}
 
 	// Done
