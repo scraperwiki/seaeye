@@ -26,7 +26,7 @@ type Job struct {
 type step struct {
 	name         string
 	instructions [][]string
-	mustSucceed  bool
+	relevant     bool
 }
 
 // Execute executes a given task: 1. Setup, 2. Run (2a. Fetch, 2b. Test).
@@ -145,10 +145,12 @@ func (j *Job) run() error {
 	env := j.prepareEnv(wd)
 
 	steps := []*step{
-		&step{name: "Pre", instructions: j.Manifest.Pre, mustSucceed: false},
-		&step{name: "Test", instructions: j.Manifest.Test, mustSucceed: true},
-		&step{name: "Post", instructions: j.Manifest.Post, mustSucceed: false},
+		&step{name: "Pre", instructions: j.Manifest.Pre},
+		&step{name: "Test", instructions: j.Manifest.Test, relevant: true},
+		&step{name: "Post", instructions: j.Manifest.Post},
 	}
+
+	var firstRelevantErr error
 
 	for _, step := range steps {
 		j.Logger.Printf("[I][job] %s %s started", j.ID, step.name)
@@ -156,22 +158,26 @@ func (j *Job) run() error {
 
 		if err := j.ExecuteStep(step.instructions, wd, env); err != nil {
 			j.Logger.Printf("[E][job] %s %s failed: %v", j.ID, step.name, err)
-			if _, ok := err.(*exec.ExitError); ok {
-				_ = j.Notifier.Notify("failure", fmt.Sprintf("Stage %s failed", step.name))
-			} else {
-				_ = j.Notifier.Notify("error", fmt.Sprintf("Stage %s failed", step.name))
+			if step.relevant {
+				if firstRelevantErr == nil {
+					firstRelevantErr = err
+				}
+				if _, ok := err.(*exec.ExitError); ok {
+					_ = j.Notifier.Notify("failure", fmt.Sprintf("Stage %s failed", step.name))
+				} else {
+					_ = j.Notifier.Notify("error", fmt.Sprintf("Stage %s failed", step.name))
+				}
 			}
-			if step.mustSucceed {
-				return err
-			}
+		} else {
+			j.Logger.Printf("[I][job] %s %s succeeded", step.name, j.ID)
 		}
-
-		j.Logger.Printf("[I][job] %s %s succeeded", step.name, j.ID)
 	}
 
 	// Done
-	_ = j.Notifier.Notify("success", "All stages succeeded")
-	return nil
+	if firstRelevantErr == nil {
+		_ = j.Notifier.Notify("success", "All stages succeeded")
+	}
+	return firstRelevantErr
 }
 
 // ExecuteStep executes instructions defined in a manifest step.
