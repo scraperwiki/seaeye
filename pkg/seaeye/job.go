@@ -158,13 +158,12 @@ func (j *Job) run() error {
 			j.Logger.Printf("[E][job] %s %s failed: %v", j.ID, step.name, err)
 			if _, ok := err.(*exec.ExitError); ok {
 				_ = j.Notifier.Notify("failure", fmt.Sprintf("Stage %s failed", step.name))
-				if !step.mustSucceed {
-					continue
-				}
 			} else {
 				_ = j.Notifier.Notify("error", fmt.Sprintf("Stage %s failed", step.name))
 			}
-			return err
+			if step.mustSucceed {
+				return err
+			}
 		}
 
 		j.Logger.Printf("[I][job] %s %s succeeded", step.name, j.ID)
