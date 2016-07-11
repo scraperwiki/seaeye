@@ -71,7 +71,7 @@ func NewConfig() *Config {
 }
 
 func getEnvOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
+	if v := os.Getenv(internalEnvPrefix + key); v != "" {
 		return v
 	}
 	return fallback
