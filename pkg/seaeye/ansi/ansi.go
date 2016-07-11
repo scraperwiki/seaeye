@@ -1,4 +1,4 @@
-package seaeye
+package ansi
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ var colors = []string{
 	"#686868", "#FF5959", "#00FF6B", "#FAFF5C", "#775AFF", "#FF47FE", "#0FFFFF", "#FFFFFF",
 }
 
-func toHTML(text []byte) []byte {
+func ToHTML(text []byte) []byte {
 	re := regexp.MustCompile("\u001B\\[([0-9A-Za-z;]+)m([^\u001B]+)")
 	matches := re.FindAllSubmatch(text, -1)
 	if matches == nil {
