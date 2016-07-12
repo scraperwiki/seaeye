@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/scraperwiki/seaeye/pkg/seaeye/ansi"
 )
 
 // Server is a http.Server that can gracefully shut down.
@@ -179,12 +178,15 @@ func statusJobHandler(state *ServerState, w http.ResponseWriter, req *http.Reque
   <meta charset="utf-8">
   <title>%s %s</title>
 <body>
-<pre>
-%s
+<pre>`, id, rev)
+	// NOTE(uwe): Don't convert to ansi for now due to maybe memory issues.
+	// w.Write(ansi.ToHTML(b))
+	w.Write(b)
+	fmt.Fprintf(w, `
 </pre>
 </body>
 </html>
-`, id, rev, string(ansi.ToHTML(b)))
+`)
 }
 
 func sourceFromRequest(req *http.Request) (*Source, error) {
