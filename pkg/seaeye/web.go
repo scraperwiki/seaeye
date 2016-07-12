@@ -145,8 +145,10 @@ func webhookHandler(state *ServerState, w http.ResponseWriter, req *http.Request
 		return
 	}
 
+	log.Printf("[I][web] Enqueuing job: %#v", s)
 	j := &Job{Config: state.config}
 	state.builds <- &Build{Job: j, Source: s}
+	log.Printf("[I][web] Enqueued job")
 }
 
 func statusJobHandler(state *ServerState, w http.ResponseWriter, req *http.Request) {

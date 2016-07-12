@@ -155,8 +155,10 @@ func (j *Job) run() error {
 	for _, step := range steps {
 		j.Logger.Printf("[I][job] %s %s started", j.ID, step.name)
 		_ = j.Notifier.Notify("pending", fmt.Sprintf("Stage %s started", step.name))
+		err := j.ExecuteStep(step.instructions, wd, env)
+		j.Logger.Printf("[I][job] %s %s finished", j.ID, step.name)
 
-		if err := j.ExecuteStep(step.instructions, wd, env); err != nil {
+		if err != nil {
 			j.Logger.Printf("[E][job] %s %s failed: %v", j.ID, step.name, err)
 			if step.relevant {
 				if firstRelevantErr == nil {
