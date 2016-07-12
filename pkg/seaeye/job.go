@@ -130,7 +130,7 @@ func (j *Job) run() error {
 	}
 
 	if j.Manifest == nil {
-		j.Logger.Printf("[I][job] %s Looking for manifest failed: %v", j.ID, wd)
+		j.Logger.Printf("[I][job] %s Looking for manifest: %v", j.ID, wd)
 		m, err := FindManifest(wd)
 		if err != nil {
 			j.Logger.Printf("[E][job] %s Failed to find valid manifest: %v", j.ID, err)
